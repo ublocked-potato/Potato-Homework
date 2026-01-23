@@ -13,12 +13,10 @@ body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a0033 
 
 .browser{position:relative;width:100vw;height:100vh;display:flex;flex-direction:column;}
 .browser-header{height:50px;background:rgba(0,0,0,0.3);backdrop-filter:blur(20px);display:flex;align-items:center;padding:0 20px;justify-content:space-between;flex-shrink:0;}
-.tabs{display:flex;align-items:center;gap:5px;flex-wrap:wrap;flex:1;overflow-x:auto;}
+.tabs{display:flex;align-items:center;gap:5px;flex:1;overflow-x:auto;}
 .tab{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.1);border-radius:20px;font-size:14px;cursor:pointer;white-space:nowrap;}
 .tab.active{background:rgba(255,255,255,0.2);}
-.tab-close{font-size:12px;color:rgba(255,255,255,0.7);cursor:pointer;}
-.tab-close:hover{color:white;}
-.add-tab-btn{width:40px;height:40px;background:rgba(255,255,255,0.3);border:none;border-radius:10px;color:white;font-size:20px;cursor:pointer;flex-shrink:0;}
+.add-tab-btn{width:40px;height:40px;background:rgba(255,255,255,0.3);border:none;border-radius:10px;color:white;font-size:20px;cursor:pointer;}
 
 .toolbar{height:70px;background:rgba(0,0,0,0.4);backdrop-filter:blur(20px);display:flex;align-items:center;padding:0 20px;gap:15px;flex-shrink:0;}
 .nav-btn,.settings-btn{width:40px;height:40px;background:rgba(255,255,255,0.2);border:none;border-radius:10px;color:white;font-size:16px;cursor:pointer;transition:all 0.3s;}
@@ -75,7 +73,6 @@ body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a0033 
 <div class="tab active" data-tab-id="home">
 <span style="font-size:20px;">🥔</span>
 <span class="tab-title">OmniSearch</span>
-<span class="tab-close">×</span>
 </div>
 </div>
 <button class="add-tab-btn">+</button>
@@ -102,28 +99,28 @@ body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a0033 
 <div class="new-tab-page">
 <div style="font-size:120px;margin-bottom:20px;">🥔</div>
 <h1 style="font-size:36px;font-weight:700;margin-bottom:10px;">OmniSearch</h1>
-<p style="opacity:0.9;font-size:18px;margin-bottom:20px;">Privacy-First Multi-Engine Search • GitHub Pages Hosted 🥔</p>
+<p style="opacity:0.9;font-size:18px;margin-bottom:20px;">Python-Powered • Protocol Switching • DPI Evasion 🥔</p>
 
 <div class="search-container">
-<input type="text" class="main-search-input" id="mainSearch" placeholder="🔍 Search the web privately...">
+<input type="text" class="main-search-input" id="mainSearch" placeholder="🔍 Search with advanced bypass...">
 <div class="search-icon">🔍</div>
 </div>
 
 <div class="reviews-grid">
 <div class="review-card">
-<div style="font-size:24px;margin-bottom:15px;">🔒</div>
-<p><strong>Privacy-First</strong></p>
-<p style="font-size:14px;opacity:0.8;margin-top:8px;">No tracking, no logs</p>
+<div style="font-size:24px;margin-bottom:15px;">🐍</div>
+<p><strong>Python Backend</strong></p>
+<p style="font-size:14px;opacity:0.8;margin-top:8px;">Server-side scraping & bypass</p>
 </div>
 <div class="review-card">
-<div style="font-size:24px;margin-bottom:15px;">🌐</div>
-<p><strong>Multi-Engine</strong></p>
-<p style="font-size:14px;opacity:0.8;margin-top:8px;">4 search engines</p>
+<div style="font-size:24px;margin-bottom:15px;">🔄</div>
+<p><strong>Protocol Switching</strong></p>
+<p style="font-size:14px;opacity:0.8;margin-top:8px;">HTTP/HTTPS auto-fallback</p>
 </div>
 <div class="review-card">
-<div style="font-size:24px;margin-bottom:15px;">⚡</div>
-<p><strong>Unblockable</strong></p>
-<p style="font-size:14px;opacity:0.8;margin-top:8px;">CORS proxy bypass</p>
+<div style="font-size:24px;margin-bottom:15px;">🛡️</div>
+<p><strong>DPI Resistant</strong></p>
+<p style="font-size:14px;opacity:0.8;margin-top:8px;">2026 evasion techniques</p>
 </div>
 </div>
 </div>
@@ -131,7 +128,7 @@ body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a0033 
 </div>
 </div>
 
-<div class="powered-by">🥔 Powered by Potato • GitHub Pages</div>
+<div class="powered-by">🥔 Python Backend • Advanced Bypass</div>
 
 <div class="settings-modal" id="settingsModal">
 <div class="settings-content">
@@ -143,27 +140,23 @@ body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a0033 
 <h3>🏠 Proxy Homepage</h3>
 <div class="setting-option active" data-homepage="blank">
 <strong>Blank Page</strong>
-<p style="font-size:13px;opacity:0.8;margin-top:5px;">Show nothing</p>
+<p style="font-size:13px;opacity:0.8;margin-top:5px;">Maximum stealth</p>
 </div>
 <div class="setting-option" data-homepage="google">
 <strong>Google</strong>
-<p style="font-size:13px;opacity:0.8;margin-top:5px;">Show Google</p>
+<p style="font-size:13px;opacity:0.8;margin-top:5px;">Google homepage</p>
 </div>
 <div class="setting-option" data-homepage="classroom">
 <strong>Google Classroom</strong>
-<p style="font-size:13px;opacity:0.8;margin-top:5px;">Stealth mode</p>
+<p style="font-size:13px;opacity:0.8;margin-top:5px;">Classroom disguise</p>
 </div>
 </div>
 </div>
 </div>
 
 <script>
-let currentTabId='home';
 let currentEngine=localStorage.getItem('searchEngine')||'duckduckgo';
 let proxyHomepage=localStorage.getItem('proxyHomepage')||'blank';
-let tabs={'home':{type:'home',url:'',title:'OmniSearch',history:[],historyIndex:-1}};
-const CORS_PROXIES=['https://api.allorigins.win/raw?url=','https://corsproxy.io/?'];
-let currentProxyIndex=0;
 
 document.querySelector('.settings-btn').onclick=()=>document.getElementById('settingsModal').classList.add('active');
 document.querySelector('.settings-close').onclick=()=>document.getElementById('settingsModal').classList.remove('active');
@@ -190,38 +183,23 @@ document.querySelector('.search-icon').onclick=performSearch;
 document.getElementById('mainSearch').onkeypress=e=>{if(e.key==='Enter')performSearch();};
 document.getElementById('addressBar').onkeypress=e=>{if(e.key==='Enter')searchOrNavigate();};
 
-function performSearch(){
+async function performSearch(){
 const query=document.getElementById('mainSearch').value.trim();
 if(!query)return;
-performSearchInTab(currentTabId,query);
-}
 
-async function performSearchInTab(tabId,query){
-const view=document.getElementById('view-'+tabId);
-view.innerHTML='<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">🥔 Searching...</div></div>';
+const view=document.getElementById('view-home');
+view.innerHTML='<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">🥔 Python Backend Searching...</div></div>';
 
 try{
-let searchUrl='';
-switch(currentEngine){
-case 'duckduckgo':searchUrl=`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;break;
-case 'google':searchUrl=`https://www.google.com/search?q=${encodeURIComponent(query)}&num=20`;break;
-case 'brave':searchUrl=`https://search.brave.com/search?q=${encodeURIComponent(query)}`;break;
-case 'startpage':searchUrl=`https://www.startpage.com/sp/search?query=${encodeURIComponent(query)}`;break;
-}
+const response=await fetch(`/api/search?q=${encodeURIComponent(query)}&engine=${currentEngine}`);
+const data=await response.json();
 
-const proxyUrl=CORS_PROXIES[currentProxyIndex]+encodeURIComponent(searchUrl);
-const response=await fetch(proxyUrl);
-if(!response.ok)throw new Error('Proxy failed');
-
-const html=await response.text();
-const results=parseSearchResults(html,currentEngine);
-
-if(results.length===0){
-view.innerHTML='<div style="padding:100px 20px;text-align:center;"><div style="font-size:72px;">🥔</div><h2>No Results</h2><button class="back-btn" onclick="location.reload()">← Try Again</button></div>';
+if(!data.success||!data.results||data.results.length===0){
+view.innerHTML='<div style="padding:100px 20px;text-align:center;"><div style="font-size:72px;">🥔</div><h2>No Results Found</h2><p>Try another engine</p><button class="back-btn" onclick="location.reload()">← Try Again</button></div>';
 return;
 }
 
-const resultsHtml=results.map(r=>`<div class="result-item" onclick="openProxy('${r.url.replace(/'/g,"\\'")}')">
+const resultsHtml=data.results.map(r=>`<div class="result-item" onclick="openProxy('${r.url.replace(/'/g,"\\'")}')">
 <div class="result-title">${escapeHtml(r.title)}</div>
 <div class="result-url">${escapeHtml(r.display_url)}</div>
 <div class="result-snippet">${escapeHtml(r.snippet)}</div>
@@ -230,40 +208,13 @@ const resultsHtml=results.map(r=>`<div class="result-item" onclick="openProxy('$
 view.innerHTML=`<div class="search-results-container">
 <div class="results-header">
 <button class="back-btn" onclick="location.reload()">← New Search</button>
-<span style="color:rgba(255,255,255,0.8);margin-left:20px;">${results.length} results • ${currentEngine}</span>
+<span style="color:rgba(255,255,255,0.8);margin-left:20px;">${data.results.length} results • ${currentEngine}</span>
 </div>${resultsHtml}</div>`;
 
 }catch(e){
-view.innerHTML='<div style="padding:100px 20px;text-align:center;"><div style="font-size:72px;">🥔</div><h2>Search Error</h2><p>Try another engine</p><button class="back-btn" onclick="location.reload()">← Back</button></div>';
+console.error('Search error:',e);
+view.innerHTML='<div style="padding:100px 20px;text-align:center;"><div style="font-size:72px;">🥔</div><h2>Backend Error</h2><p>Make sure Python server is running</p><button class="back-btn" onclick="location.reload()">← Back</button></div>';
 }
-}
-
-function parseSearchResults(html,engine){
-const parser=new DOMParser();
-const doc=parser.parseFromString(html,'text/html');
-const results=[];
-
-if(engine==='duckduckgo'){
-doc.querySelectorAll('.result__body').forEach(item=>{
-const link=item.querySelector('.result__a');
-if(!link)return;
-let url=link.href;
-const match=url.match(/uddg=([^&]+)/);
-if(match)url=decodeURIComponent(match[1]);
-results.push({title:link.textContent.trim(),url:url,display_url:new URL(url).hostname,snippet:item.querySelector('.result__snippet')?.textContent.trim()||''});
-});
-}else if(engine==='google'){
-doc.querySelectorAll('.g, div[data-sokoban-container]').forEach(item=>{
-const link=item.querySelector('a');
-const h3=item.querySelector('h3');
-if(!link||!h3)return;
-let url=link.href;
-if(url.includes('google.com/search'))return;
-results.push({title:h3.textContent.trim(),url:url,display_url:new URL(url).hostname.replace('www.',''),snippet:item.querySelector('.VwiC3b')?.textContent.trim()||''});
-});
-}
-
-return results.slice(0,20);
 }
 
 function searchOrNavigate(){
@@ -272,15 +223,70 @@ if(!input)return;
 if(input.match(/^https?:\/\//i)||input.match(/^[^\s]+\.[^\s]+$/)){
 openProxy(input.startsWith('http')?input:'https://'+input);
 }else{
-performSearchInTab(currentTabId,input);
+document.getElementById('mainSearch').value=input;
+performSearch();
 }
 }
 
 function openProxy(url){
+// Detect complex sites that won't work well in proxy
+const complexSites=['chatgpt.com','openai.com','perplexity.ai','poki.com','youtube.com','netflix.com','discord.com','spotify.com','twitch.tv','roblox.com'];
+const isComplex=complexSites.some(site=>url.toLowerCase().includes(site));
+
+if(isComplex){
+// Show warning modal
 const view=document.getElementById('view-home');
-let homepageUrl=proxyHomepage==='google'?'https://www.google.com':proxyHomepage==='classroom'?'https://classroom.google.com':url;
-const proxyUrl=CORS_PROXIES[currentProxyIndex]+encodeURIComponent(homepageUrl);
-view.innerHTML=`<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">Loading...</div></div><iframe class="proxy-frame" src="${proxyUrl}" onload="this.previousElementSibling.remove()"></iframe>`;
+view.innerHTML=`
+<div style="padding:60px 20px;text-align:center;overflow-y:auto;height:100%;">
+<div style="font-size:92px;margin-bottom:20px;">⚠️</div>
+<h1 style="font-size:32px;margin-bottom:20px;">Complex Site Detected</h1>
+<p style="font-size:18px;opacity:0.9;margin-bottom:30px;max-width:600px;margin-left:auto;margin-right:auto;">
+This site uses advanced features (WebSockets, WebGL, AI APIs) that won't work properly in a proxy.
+</p>
+<div style="background:rgba(255,255,255,0.1);padding:20px;border-radius:20px;margin:30px auto;max-width:500px;">
+<p style="font-size:14px;opacity:0.8;margin-bottom:10px;">Site:</p>
+<p style="font-family:monospace;font-size:14px;color:#a78bfa;word-break:break-all;">${url}</p>
+</div>
+<div style="display:flex;gap:15px;justify-content:center;flex-wrap:wrap;margin-top:30px;">
+<button onclick="window.open('${url}','_blank')" 
+style="background:linear-gradient(135deg,#8a2be2,#9300ea);color:white;border:none;padding:15px 30px;border-radius:25px;font-weight:600;font-size:16px;cursor:pointer;">
+🌐 Visit Real Site
+</button>
+<button onclick="tryProxyAnyway('${url}')" 
+style="background:rgba(255,255,255,0.2);color:white;border:none;padding:15px 30px;border-radius:25px;font-weight:600;font-size:16px;cursor:pointer;">
+Try Proxy Anyway
+</button>
+<button onclick="location.reload()" 
+style="background:rgba(255,255,255,0.1);color:white;border:none;padding:15px 30px;border-radius:25px;font-weight:600;font-size:16px;cursor:pointer;">
+← Back
+</button>
+</div>
+<div style="margin-top:40px;padding:20px;background:rgba(138,43,226,0.2);border-radius:15px;max-width:600px;margin-left:auto;margin-right:auto;">
+<p style="font-size:14px;margin-bottom:10px;"><strong>💡 Why complex sites don't work:</strong></p>
+<ul style="text-align:left;font-size:13px;opacity:0.8;line-height:1.8;padding-left:20px;">
+<li><strong>ChatGPT/Perplexity:</strong> Need WebSocket real-time connections</li>
+<li><strong>Poki Games:</strong> Require Canvas, WebGL & complex JavaScript</li>
+<li><strong>YouTube:</strong> Video streaming + DRM protection</li>
+<li><strong>Discord/Spotify:</strong> Real-time audio/WebRTC</li>
+</ul>
+</div>
+<p style="font-size:12px;opacity:0.6;margin-top:30px;">
+🥔 Tip: For best experience with these sites, use a VPN or access directly
+</p>
+</div>`;
+return;
+}
+
+// Regular proxy for simple sites
+const view=document.getElementById('view-home');
+const encoded=btoa(url);
+view.innerHTML=`<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">Loading via Python...</div></div><iframe class="proxy-frame" src="/api/proxy?url=${encoded}" onload="this.previousElementSibling.remove()"></iframe>`;
+}
+
+function tryProxyAnyway(url){
+const view=document.getElementById('view-home');
+const encoded=btoa(url);
+view.innerHTML=`<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">Loading (may not work)...</div></div><iframe class="proxy-frame" src="/api/proxy?url=${encoded}" onload="this.previousElementSibling.remove()"></iframe>`;
 }
 
 function escapeHtml(text){
@@ -289,7 +295,6 @@ div.textContent=text;
 return div.innerHTML;
 }
 
-// Load saved engine on startup
 document.querySelectorAll('.engine-btn').forEach(btn=>{
 if(btn.dataset.engine===currentEngine)btn.classList.add('active');
 else btn.classList.remove('active');
