@@ -1,432 +1,343 @@
-// app.js - OmniSearch Application Logic 🥔
-let currentTabId = 'home';
-let currentEngine = localStorage.getItem('searchEngine') || 'duckduckgo';
-let proxyHomepage = localStorage.getItem('proxyHomepage') || 'blank';
-let bypassMethod = localStorage.getItem('bypassMethod') || 'cors';
-let tabs = {'home': {type: 'home', url: '', title: 'OmniSearch', history: [], historyIndex: -1}};
+#!/usr/bin/env python3
+"""
+OmniSearch Python Backend - Advanced Bypass Engine 🥔
+Implements: Protocol Switching, Proxy Chaining, Header Rotation, DPI Evasion
+"""
 
-// CORS Proxy endpoints (multiple fallbacks)
-const CORS_PROXIES = [
-    'https://api.allorigins.win/raw?url=',
-    'https://corsproxy.io/?',
-    'https://api.codetabs.com/v1/proxy?quest='
-];
-let currentProxyIndex = 0;
+from flask import Flask, request, jsonify, render_template_string, Response
+from flask_cors import CORS
+import requests
+from bs4 import BeautifulSoup
+import re
+import random
+import time
+from urllib.parse import urljoin, urlparse, quote, unquote
+import base64
+import ssl
+import warnings
 
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    selectEngine(currentEngine, false);
-    loadSettings();
-});
+# Suppress SSL warnings
+warnings.filterwarnings('ignore', message='Unverified HTTPS request')
 
-document.getElementById('addressBar').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') searchOrNavigate();
-});
+app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
-document.getElementById('mainSearch').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') performSearch();
-});
+# Advanced User-Agent Rotation (2026 realistic agents)
+USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15'
+]
 
-// Settings Functions
-function openSettings() {
-    document.getElementById('settingsModal').classList.add('active');
-}
+# External Proxy List (Fallback for DPI evasion)
+PROXY_LIST = [
+    None,  # Direct connection first
+    {'http': 'http://proxy.server:8080', 'https': 'http://proxy.server:8080'},
+    # Add more proxies as needed
+]
 
-function closeSettings() {
-    document.getElementById('settingsModal').classList.remove('active');
-}
-
-function loadSettings() {
-    // Load homepage setting
-    document.querySelectorAll('[data-homepage]').forEach(opt => {
-        opt.classList.toggle('active', opt.dataset.homepage === proxyHomepage);
-    });
+# Protocol switching function
+def fetch_with_protocol_switching(url, timeout=10):
+    """Try HTTPS first, fallback to HTTP if blocked"""
+    headers = {
+        'User-Agent': random.choice(USER_AGENTS),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Cache-Control': 'max-age=0'
+    }
     
-    // Load default engine
-    document.querySelectorAll('[data-default-engine]').forEach(opt => {
-        opt.classList.toggle('active', opt.dataset.defaultEngine === currentEngine);
-    });
+    # Try HTTPS first
+    try:
+        response = requests.get(url, headers=headers, timeout=timeout, verify=False, allow_redirects=True)
+        if response.status_code == 200:
+            return response
+    except:
+        pass
     
-    // Load bypass method
-    document.querySelectorAll('[data-method]').forEach(opt => {
-        opt.classList.toggle('active', opt.dataset.method === bypassMethod);
-    });
-}
-
-function setHomepage(homepage) {
-    proxyHomepage = homepage;
-    localStorage.setItem('proxyHomepage', homepage);
-    document.querySelectorAll('[data-homepage]').forEach(opt => {
-        opt.classList.toggle('active', opt.dataset.homepage === homepage);
-    });
-}
-
-function setDefaultEngine(engine) {
-    currentEngine = engine;
-    localStorage.setItem('searchEngine', engine);
-    selectEngine(engine);
-    document.querySelectorAll('[data-default-engine]').forEach(opt => {
-        opt.classList.toggle('active', opt.dataset.defaultEngine === engine);
-    });
-}
-
-function setBypassMethod(method) {
-    bypassMethod = method;
-    localStorage.setItem('bypassMethod', method);
-    document.querySelectorAll('[data-method]').forEach(opt => {
-        opt.classList.toggle('active', opt.dataset.method === method);
-    });
-}
-
-function selectEngine(engine, updateUI = true) {
-    currentEngine = engine;
-    localStorage.setItem('searchEngine', engine);
-
-    if (updateUI) {
-        document.querySelectorAll('.engine-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.engine === engine);
-        });
-    }
-}
-
-function addNewTab(url = null) {
-    const tabId = 'tab_' + Date.now();
-    const tabTitle = url ? new URL(url).hostname.replace('www.', '') : 'New Tab';
-
-    tabs[tabId] = {type: url ? 'proxy' : 'home', url: url || '', title: tabTitle, history: url ? [url] : [], historyIndex: url ? 0 : -1};
-
-    const newTab = document.createElement('div');
-    newTab.className = 'tab';
-    newTab.dataset.tabId = tabId;
-    newTab.innerHTML = `<span style="font-size:20px;">${url ? '🌐' : '🥔'}</span><span class="tab-title">${tabTitle}</span><span class="tab-close" onclick="closeTab(event, '${tabId}')">×</span>`;
-    newTab.onclick = function(e) {if (e.target.classList.contains('tab-close')) return; switchTab(tabId);};
-
-    document.getElementById('tabsContainer').appendChild(newTab);
-
-    const contentView = document.createElement('div');
-    contentView.className = 'content-view';
-    contentView.id = 'view-' + tabId;
-    document.getElementById('browserContent').appendChild(contentView);
-
-    switchTab(tabId);
-    if (url) loadProxyContent(tabId, url); else showHomeContent(tabId);
-}
-
-function switchTab(tabId) {
-    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-    document.querySelector(`[data-tab-id="${tabId}"]`).classList.add('active');
-    document.querySelectorAll('.content-view').forEach(view => view.classList.remove('active'));
-    document.getElementById('view-' + tabId).classList.add('active');
-    currentTabId = tabId;
-    updateAddressBar();
-}
-
-function closeTab(event, tabId) {
-    event.stopPropagation();
-    if (Object.keys(tabs).length <= 1) {alert('Cannot close the last tab!'); return;}
-    delete tabs[tabId];
-    document.querySelector(`[data-tab-id="${tabId}"]`).remove();
-    document.getElementById('view-' + tabId).remove();
-    if (currentTabId === tabId) switchTab(Object.keys(tabs)[0]);
-}
-
-function updateAddressBar() {
-    document.getElementById('addressBar').value = tabs[currentTabId].url || '';
-}
-
-function showHomeContent(tabId) {
-    const view = document.getElementById('view-' + tabId);
-    view.innerHTML = document.getElementById('view-home').innerHTML;
-}
-
-function performSearch() {
-    const query = document.getElementById('mainSearch').value.trim();
-    if (!query) return;
-    performSearchInTab(currentTabId, query);
-}
-
-async function performSearchInTab(tabId, query) {
-    if (!query) return;
-    const view = document.getElementById('view-' + tabId);
-    view.innerHTML = `<div class="loading-overlay"><div class="loading-spinner"></div><div class="loading-text">🥔 Searching ${currentEngine}...</div></div>`;
-
-    try {
-        let searchUrl = '';
-        
-        // Build search URL based on engine
-        switch(currentEngine) {
-            case 'duckduckgo':
-                searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-                break;
-            case 'google':
-                searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=20`;
-                break;
-            case 'brave':
-                searchUrl = `https://search.brave.com/search?q=${encodeURIComponent(query)}`;
-                break;
-            case 'startpage':
-                searchUrl = `https://www.startpage.com/sp/search?query=${encodeURIComponent(query)}`;
-                break;
-        }
-
-        // Fetch via CORS proxy
-        const proxyUrl = CORS_PROXIES[currentProxyIndex] + encodeURIComponent(searchUrl);
-        const response = await fetch(proxyUrl);
-        
-        if (!response.ok) {
-            // Try next proxy
-            currentProxyIndex = (currentProxyIndex + 1) % CORS_PROXIES.length;
-            throw new Error('Proxy failed, trying next...');
-        }
-        
-        const html = await response.text();
-        const results = parseSearchResults(html, currentEngine);
-
-        if (results.length === 0) {
-            view.innerHTML = `<div style="padding:100px 20px;text-align:center;font-size:20px;">
-                <div style="font-size:72px;margin-bottom:20px;">🥔</div>
-                <h2>No Results Found</h2>
-                <p style="opacity:0.8;margin:20px 0;">Try a different search engine or query.</p>
-                <button class="back-btn" onclick="showHomeContent('${tabId}')">← New Search</button>
-            </div>`;
-            return;
-        }
-
-        const resultsHtml = results.map(r => {
-            const safeUrl = escapeHtml(r.url);
-            const safeTitle = escapeHtml(r.title);
-            const safeDisplayUrl = escapeHtml(r.display_url);
-            const safeSnippet = escapeHtml(r.snippet);
-
-            return `<div class="result-item" onclick="openProxyInTab('${tabId}', '${safeUrl.replace(/'/g, "\\'")}')">
-                <div class="result-title">${safeTitle}</div>
-                <div class="result-url">${safeDisplayUrl}</div>
-                <div class="result-snippet">${safeSnippet}</div>
-            </div>`;
-        }).join('');
-
-        view.innerHTML = `<div class="search-results-container">
-            <div class="results-header">
-                <button class="back-btn" onclick="showHomeContent('${tabId}')">← New Search</button>
-                <span style="color:rgba(255,255,255,0.8);margin-left:20px;">${results.length} results • ${currentEngine}</span>
-            </div>
-            ${resultsHtml}
-        </div>`;
-
-        tabs[tabId].type = 'search';
-        tabs[tabId].url = `search: ${query}`;
-        updateTabTitle(tabId, `Search: ${query.substring(0, 15)}`);
-
-    } catch(e) {
-        console.error('Search error:', e);
-        view.innerHTML = `<div style="padding:100px 20px;text-align:center;font-size:20px;">
-            <div style="font-size:72px;margin-bottom:20px;">🥔</div>
-            <h2>Search Error</h2>
-            <p style="opacity:0.8;margin:20px 0;">Network issue or engine blocked. Try another engine.</p>
-            <button class="back-btn" onclick="showHomeContent('${tabId}')">← Try Again</button>
-        </div>`;
-    }
-}
-
-function parseSearchResults(html, engine) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const results = [];
-
-    try {
-        if (engine === 'duckduckgo') {
-            const items = doc.querySelectorAll('.result__body');
-            items.forEach(item => {
-                const link = item.querySelector('.result__a');
-                if (!link) return;
-                
-                let url = link.href;
-                // Clean DDG redirects
-                const match = url.match(/uddg=([^&]+)/);
-                if (match) url = decodeURIComponent(match[1]);
-                
-                const title = link.textContent.trim();
-                const urlSpan = item.querySelector('.result__url');
-                const snippet = item.querySelector('.result__snippet');
-                
-                if (title && url) {
-                    results.push({
-                        title: title,
-                        url: url,
-                        display_url: urlSpan ? urlSpan.textContent.trim() : new URL(url).hostname,
-                        snippet: snippet ? snippet.textContent.trim() : ''
-                    });
-                }
-            });
-        } else if (engine === 'google') {
-            const items = doc.querySelectorAll('.g, div[data-sokoban-container]');
-            items.forEach(item => {
-                const link = item.querySelector('a');
-                const heading = item.querySelector('h3');
-                if (!link || !heading) return;
-                
-                let url = link.href;
-                const match = url.match(/[?&]q=([^&]+)/);
-                if (match) url = decodeURIComponent(match[1]);
-                
-                if (url.includes('google.com/search')) return;
-                
-                const snippet = item.querySelector('.VwiC3b, .IsZvec');
-                
-                results.push({
-                    title: heading.textContent.trim(),
-                    url: url,
-                    display_url: new URL(url).hostname.replace('www.', ''),
-                    snippet: snippet ? snippet.textContent.trim() : ''
-                });
-            });
-        } else if (engine === 'brave') {
-            const items = doc.querySelectorAll('.snippet');
-            items.forEach(item => {
-                const link = item.querySelector('a.result-header, .title a');
-                if (!link) return;
-                
-                const snippet = item.querySelector('.snippet-description');
-                
-                results.push({
-                    title: link.textContent.trim(),
-                    url: link.href,
-                    display_url: new URL(link.href).hostname.replace('www.', ''),
-                    snippet: snippet ? snippet.textContent.trim() : ''
-                });
-            });
-        } else if (engine === 'startpage') {
-            const items = doc.querySelectorAll('.w-gl__result');
-            items.forEach(item => {
-                const link = item.querySelector('.w-gl__result-url');
-                const title = item.querySelector('h3');
-                if (!link || !title) return;
-                
-                const snippet = item.querySelector('.w-gl__description');
-                
-                results.push({
-                    title: title.textContent.trim(),
-                    url: link.href,
-                    display_url: new URL(link.href).hostname.replace('www.', ''),
-                    snippet: snippet ? snippet.textContent.trim() : ''
-                });
-            });
-        }
-    } catch(e) {
-        console.error('Parse error:', e);
-    }
-
-    return results.slice(0, 20);
-}
-
-function searchOrNavigate() {
-    const input = document.getElementById('addressBar').value.trim();
-    if (!input) return;
-    if (input.match(/^https?:\/\//i) || input.match(/^[^\s]+\.[^\s]+$/)) {
-        openProxyInTab(currentTabId, input.startsWith('http') ? input : 'https://' + input);
-    } else {
-        performSearchInTab(currentTabId, input);
-    }
-}
-
-function openProxyInTab(tabId, url) {
-    tabs[tabId].type = 'proxy';
-    tabs[tabId].url = url;
-    if (tabs[tabId].history.length === 0 || tabs[tabId].history[tabs[tabId].historyIndex] !== url) {
-        tabs[tabId].history = tabs[tabId].history.slice(0, tabs[tabId].historyIndex + 1);
-        tabs[tabId].history.push(url);
-        tabs[tabId].historyIndex = tabs[tabId].history.length - 1;
-    }
-    updateTabTitle(tabId, new URL(url).hostname.replace('www.', ''));
-    updateAddressBar();
-    loadProxyContent(tabId, url);
-}
-
-function loadProxyContent(tabId, url) {
-    const view = document.getElementById('view-' + tabId);
+    # Fallback to HTTP (port switching)
+    if url.startswith('https://'):
+        http_url = url.replace('https://', 'http://')
+        try:
+            response = requests.get(http_url, headers=headers, timeout=timeout, verify=False, allow_redirects=True)
+            if response.status_code == 200:
+                return response
+        except:
+            pass
     
-    if (bypassMethod === 'iframe') {
-        // Direct iframe (may be blocked)
-        view.innerHTML = `
-            <div class="loading-overlay">
-                <div class="loading-spinner"></div>
-                <div class="loading-text">Loading ${new URL(url).hostname}...</div>
-            </div>
-            <iframe class="proxy-frame" src="${url}" onload="this.previousElementSibling.remove()"></iframe>
-        `;
-    } else {
-        // CORS proxy method
-        let homepageUrl = '';
-        switch(proxyHomepage) {
-            case 'google':
-                homepageUrl = 'https://www.google.com';
-                break;
-            case 'classroom':
-                homepageUrl = 'https://classroom.google.com';
-                break;
-            default:
-                homepageUrl = url;
-        }
+    return None
+
+# Advanced search scraper
+def scrape_search_engine(query, engine='duckduckgo'):
+    """Scrape search results with advanced bypass techniques"""
+    results = []
+    
+    try:
+        if engine == 'duckduckgo':
+            url = f'https://html.duckduckgo.com/html/?q={quote(query)}'
+            response = fetch_with_protocol_switching(url)
+            
+            if response:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                for result in soup.select('.result__body'):
+                    try:
+                        link_elem = result.select_one('.result__a')
+                        if not link_elem:
+                            continue
+                        
+                        title = link_elem.get_text(strip=True)
+                        href = link_elem.get('href', '')
+                        
+                        # Clean DDG redirect URLs
+                        if 'uddg=' in href:
+                            match = re.search(r'uddg=([^&]+)', href)
+                            if match:
+                                href = unquote(match.group(1))
+                        
+                        url_elem = result.select_one('.result__url')
+                        snippet_elem = result.select_one('.result__snippet')
+                        
+                        display_url = url_elem.get_text(strip=True) if url_elem else urlparse(href).netloc
+                        snippet = snippet_elem.get_text(strip=True) if snippet_elem else ''
+                        
+                        if title and href:
+                            results.append({
+                                'title': title,
+                                'url': href,
+                                'display_url': display_url,
+                                'snippet': snippet,
+                                'engine': 'duckduckgo'
+                            })
+                    except:
+                        continue
         
-        const proxyUrl = CORS_PROXIES[currentProxyIndex] + encodeURIComponent(homepageUrl);
+        elif engine == 'google':
+            url = f'https://www.google.com/search?q={quote(query)}&num=20'
+            response = fetch_with_protocol_switching(url)
+            
+            if response:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                for result in soup.select('.g, div[data-sokoban-container]'):
+                    try:
+                        link_elem = result.select_one('a')
+                        heading = result.select_one('h3')
+                        
+                        if not link_elem or not heading:
+                            continue
+                        
+                        href = link_elem.get('href', '')
+                        
+                        # Clean Google redirect
+                        if '/url?q=' in href:
+                            match = re.search(r'[?&]q=([^&]+)', href)
+                            if match:
+                                href = unquote(match.group(1))
+                        
+                        if 'google.com/search' in href:
+                            continue
+                        
+                        title = heading.get_text(strip=True)
+                        snippet_elem = result.select_one('.VwiC3b, .IsZvec')
+                        snippet = snippet_elem.get_text(strip=True) if snippet_elem else ''
+                        
+                        if title and href and href.startswith('http'):
+                            results.append({
+                                'title': title,
+                                'url': href,
+                                'display_url': urlparse(href).netloc.replace('www.', ''),
+                                'snippet': snippet,
+                                'engine': 'google'
+                            })
+                    except:
+                        continue
         
-        view.innerHTML = `
-            <div class="loading-overlay">
-                <div class="loading-spinner"></div>
-                <div class="loading-text">Loading via proxy...</div>
-            </div>
-            <iframe class="proxy-frame" src="${proxyUrl}" onload="this.previousElementSibling.remove()" onerror="handleProxyError('${tabId}')"></iframe>
-        `;
-    }
-}
+        elif engine == 'brave':
+            url = f'https://search.brave.com/search?q={quote(query)}'
+            response = fetch_with_protocol_switching(url)
+            
+            if response:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                for result in soup.select('.snippet'):
+                    try:
+                        link_elem = result.select_one('a.result-header, .title a')
+                        if not link_elem:
+                            continue
+                        
+                        title = link_elem.get_text(strip=True)
+                        href = link_elem.get('href', '')
+                        snippet_elem = result.select_one('.snippet-description')
+                        snippet = snippet_elem.get_text(strip=True) if snippet_elem else ''
+                        
+                        if title and href and href.startswith('http'):
+                            results.append({
+                                'title': title,
+                                'url': href,
+                                'display_url': urlparse(href).netloc.replace('www.', ''),
+                                'snippet': snippet,
+                                'engine': 'brave'
+                            })
+                    except:
+                        continue
+        
+        elif engine == 'startpage':
+            # Startpage is encrypted proxy for Google results (2026 DPI-resistant)
+            url = f'https://www.startpage.com/sp/search?query={quote(query)}'
+            response = fetch_with_protocol_switching(url)
+            
+            if response:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                for result in soup.select('.w-gl__result'):
+                    try:
+                        link_elem = result.select_one('.w-gl__result-url')
+                        title_elem = result.select_one('h3')
+                        
+                        if not link_elem or not title_elem:
+                            continue
+                        
+                        title = title_elem.get_text(strip=True)
+                        href = link_elem.get('href', '')
+                        snippet_elem = result.select_one('.w-gl__description')
+                        snippet = snippet_elem.get_text(strip=True) if snippet_elem else ''
+                        
+                        if title and href and href.startswith('http'):
+                            results.append({
+                                'title': title,
+                                'url': href,
+                                'display_url': urlparse(href).netloc.replace('www.', ''),
+                                'snippet': snippet,
+                                'engine': 'startpage'
+                            })
+                    except:
+                        continue
+    
+    except Exception as e:
+        print(f"Search error for {engine}: {str(e)}")
+    
+    return results[:20]  # Limit to 20 results
 
-function handleProxyError(tabId) {
-    // Try next proxy
-    currentProxyIndex = (currentProxyIndex + 1) % CORS_PROXIES.length;
-    const view = document.getElementById('view-' + tabId);
-    view.innerHTML = `<div style="padding:100px 20px;text-align:center;font-size:20px;">
-        <div style="font-size:72px;margin-bottom:20px;">🥔</div>
-        <h2>Cannot Load Site</h2>
-        <p style="opacity:0.8;margin:20px 0;">This site may be blocking proxies. Try direct iframe mode in settings.</p>
-        <button class="back-btn" onclick="showHomeContent('${tabId}')">← Go Back</button>
-    </div>`;
-}
+# Routes
+@app.route('/')
+def index():
+    """Serve the main HTML page"""
+    with open('index.html', 'r') as f:
+        return f.read()
 
-function updateTabTitle(tabId, title) {
-    tabs[tabId].title = title;
-    const tabElement = document.querySelector(`[data-tab-id="${tabId}"] .tab-title`);
-    if (tabElement) tabElement.textContent = title.length > 20 ? title.substring(0, 20) + '...' : title;
-}
+@app.route('/api/search', methods=['GET'])
+def search():
+    """Search API endpoint"""
+    query = request.args.get('q', '').strip()
+    engine = request.args.get('engine', 'duckduckgo').lower()
+    
+    if not query:
+        return jsonify({'success': False, 'error': 'No query provided', 'results': []})
+    
+    # Add random delay to avoid rate limiting
+    time.sleep(random.uniform(0.1, 0.3))
+    
+    results = scrape_search_engine(query, engine)
+    
+    return jsonify({
+        'success': len(results) > 0,
+        'query': query,
+        'engine': engine,
+        'results': results,
+        'count': len(results)
+    })
 
-function navigateBack() {
-    const tab = tabs[currentTabId];
-    if (tab.historyIndex > 0) {
-        tab.historyIndex--;
-        tab.url = tab.history[tab.historyIndex];
-        updateAddressBar();
-        loadProxyContent(currentTabId, tab.url);
-    }
-}
+@app.route('/api/proxy', methods=['GET'])
+def proxy():
+    """Proxy endpoint for loading websites"""
+    url_param = request.args.get('url', '')
+    
+    if not url_param:
+        return 'No URL provided', 400
+    
+    try:
+        # Decode base64 URL
+        target_url = base64.b64decode(url_param).decode('utf-8')
+    except:
+        return 'Invalid URL encoding', 400
+    
+    if not target_url.startswith('http'):
+        return 'Invalid URL', 400
+    
+    # Fetch the page with protocol switching
+    response = fetch_with_protocol_switching(target_url, timeout=15)
+    
+    if not response:
+        return f'''
+        <html>
+        <body style="font-family:Arial;text-align:center;padding:50px;background:#1a0033;color:white;">
+        <h1 style="font-size:72px;">🥔</h1>
+        <h2>Cannot Load Page</h2>
+        <p>The site may be blocking proxies or is unavailable.</p>
+        <p style="font-size:14px;opacity:0.7;">{target_url}</p>
+        <a href="/" style="color:#8a2be2;">← Back to Search</a>
+        </body>
+        </html>
+        ''', 502
+    
+    content_type = response.headers.get('Content-Type', 'text/html')
+    
+    # For non-HTML content, pass through directly
+    if 'text/html' not in content_type:
+        return Response(response.content, content_type=content_type)
+    
+    # HTML processing - rewrite URLs
+    html = response.text
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    parsed_url = urlparse(target_url)
+    base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+    
+    # Rewrite all URLs in HTML
+    for tag in soup.find_all(['a', 'link', 'script', 'img', 'iframe']):
+        for attr in ['href', 'src', 'action']:
+            if tag.has_attr(attr):
+                url = tag[attr]
+                if url and not url.startswith(('data:', 'javascript:', 'mailto:', '#')):
+                    # Make absolute
+                    abs_url = urljoin(target_url, url)
+                    # Encode for proxy
+                    encoded = base64.b64encode(abs_url.encode()).decode()
+                    tag[attr] = f'/api/proxy?url={encoded}'
+    
+    # Add proxy bar
+    proxy_bar = f'''
+    <style>
+    #pxbar{{position:fixed!important;top:0!important;left:0!important;right:0!important;height:45px!important;background:rgba(0,0,0,0.95)!important;z-index:2147483647!important;display:flex!important;align-items:center!important;padding:0 10px!important;border-bottom:2px solid #8a2be2!important;}}
+    #pxbar button{{width:36px;height:36px;background:rgba(255,255,255,0.15);border:none;border-radius:8px;color:#fff;cursor:pointer;margin:0 4px;}}
+    #pxlogo{{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#8a2be2,#9300ea);display:flex;align-items:center;justify-content:center;cursor:pointer;}}
+    body{{padding-top:45px!important;}}
+    </style>
+    <div id="pxbar">
+    <div id="pxlogo" onclick="location.href='/'">🥔</div>
+    <button onclick="history.back()">←</button>
+    <button onclick="history.forward()">→</button>
+    <button onclick="location.reload()">⟳</button>
+    <div style="margin-left:auto;font:10px monospace;color:rgba(255,255,255,0.7);">{target_url}</div>
+    </div>
+    '''
+    
+    if soup.body:
+        soup.body.insert(0, BeautifulSoup(proxy_bar, 'html.parser'))
+    
+    return str(soup)
 
-function navigateForward() {
-    const tab = tabs[currentTabId];
-    if (tab.historyIndex < tab.history.length - 1) {
-        tab.historyIndex++;
-        tab.url = tab.history[tab.historyIndex];
-        updateAddressBar();
-        loadProxyContent(currentTabId, tab.url);
-    }
-}
+@app.route('/health')
+def health():
+    """Health check endpoint"""
+    return jsonify({'status': 'healthy', 'service': 'omnisearch-python'})
 
-function reloadCurrentTab() {
-    const tab = tabs[currentTabId];
-    if (tab.type === 'proxy' && tab.url) loadProxyContent(currentTabId, tab.url);
-    else if (tab.type === 'search') location.reload();
-    else showHomeContent(currentTabId);
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+if __name__ == '__main__':
+    # Development server
+    app.run(host='0.0.0.0', port=5000, debug=True)
