@@ -341,7 +341,35 @@ performSearch();
 }
 
 function openProxy(url){
-const complexSites=['chatgpt.com','openai.com','perplexity.ai','poki.com','youtube.com','netflix.com','discord.com','spotify.com','twitch.tv','roblox.com'];
+// Special handling for ChatGPT - show embedded option
+if(url.toLowerCase().includes('chatgpt.com')||url.toLowerCase().includes('chat.openai.com')){
+const view=document.getElementById('view-home');
+view.innerHTML=`<div style="padding:40px 20px;text-align:center;overflow-y:auto;height:100%;">
+<div style="font-size:82px;margin-bottom:20px;">🤖</div>
+<h1 style="font-size:32px;margin-bottom:20px;">ChatGPT Access</h1>
+<p style="font-size:18px;opacity:0.9;margin-bottom:30px;max-width:600px;margin-left:auto;margin-right:auto;">
+ChatGPT works best when accessed directly. Choose your preferred method:
+</p>
+<div style="display:flex;gap:15px;justify-content:center;flex-wrap:wrap;margin-bottom:30px;">
+<button onclick="window.open('https://chat.openai.com','_blank')" style="background:linear-gradient(135deg,#8a2be2,#9300ea);color:white;border:none;padding:18px 35px;border-radius:25px;font-weight:600;font-size:17px;cursor:pointer;box-shadow:0 5px 20px rgba(138,43,226,0.4);">🌐 Open ChatGPT</button>
+<button onclick="tryEmbedChatGPT()" style="background:rgba(255,255,255,0.2);color:white;border:none;padding:18px 35px;border-radius:25px;font-weight:600;font-size:17px;cursor:pointer;">📱 Try Embed</button>
+<button onclick="location.reload()" style="background:rgba(255,255,255,0.1);color:white;border:none;padding:18px 35px;border-radius:25px;font-weight:600;font-size:17px;cursor:pointer;">← Back</button>
+</div>
+<div style="background:rgba(138,43,226,0.2);padding:25px;border-radius:20px;max-width:600px;margin:0 auto;text-align:left;">
+<p style="font-size:14px;margin-bottom:12px;"><strong>💡 Why ChatGPT needs special access:</strong></p>
+<ul style="font-size:13px;opacity:0.9;line-height:1.9;padding-left:20px;">
+<li>Real-time AI responses via WebSocket</li>
+<li>Authentication & session cookies</li>
+<li>Direct API connections to OpenAI</li>
+<li>Stream processing for text generation</li>
+</ul>
+</div>
+</div>`;
+return;
+}
+
+// Other complex sites
+const complexSites=['perplexity.ai','poki.com','youtube.com','netflix.com','discord.com','spotify.com','twitch.tv','roblox.com'];
 const isComplex=complexSites.some(site=>url.toLowerCase().includes(site));
 if(isComplex){
 const view=document.getElementById('view-home');
@@ -349,7 +377,7 @@ view.innerHTML=`<div style="padding:60px 20px;text-align:center;overflow-y:auto;
 <div style="font-size:92px;margin-bottom:20px;">⚠️</div>
 <h1 style="font-size:32px;margin-bottom:20px;">Complex Site Detected</h1>
 <p style="font-size:18px;opacity:0.9;margin-bottom:30px;max-width:600px;margin-left:auto;margin-right:auto;">
-This site uses advanced features (WebSockets, WebGL, AI APIs) that won't work in a proxy.
+This site uses advanced features that won't work properly in a proxy.
 </p>
 <div style="background:rgba(255,255,255,0.1);padding:20px;border-radius:20px;margin:30px auto;max-width:500px;">
 <p style="font-size:14px;opacity:0.8;margin-bottom:10px;">Site:</p>
@@ -362,6 +390,8 @@ This site uses advanced features (WebSockets, WebGL, AI APIs) that won't work in
 </div></div>`;
 return;
 }
+
+// Regular proxy for simple sites
 const view=document.getElementById('view-home');
 if(usePythonBackend){
 const encoded=btoa(url);
@@ -369,6 +399,15 @@ view.innerHTML=`<div class="loading-overlay"><div class="loading-spinner"></div>
 }else{
 const proxyUrl=CORS_PROXIES[currentProxyIndex]+encodeURIComponent(url);
 view.innerHTML=`<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">Loading...</div></div><iframe class="proxy-frame" src="${proxyUrl}" onload="this.previousElementSibling.remove()"></iframe>`;
+}
+}
+
+function tryEmbedChatGPT(){
+if(usePythonBackend){
+const encoded=btoa('https://chat.openai.com');
+document.getElementById('view-home').innerHTML=`<iframe class="proxy-frame" src="/api/proxy?url=${encoded}"></iframe>`;
+}else{
+document.getElementById('view-home').innerHTML=`<iframe class="proxy-frame" src="https://chat.openai.com" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>`;
 }
 }
 
