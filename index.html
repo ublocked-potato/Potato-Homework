@@ -64,6 +64,7 @@ body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a0033 
 .setting-option:hover{background:rgba(255,255,255,0.15);}
 .setting-option.active{background:rgba(138,43,226,0.3);border:2px solid #8a2be2;}
 .powered-by{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.4);padding:12px 25px;border-radius:30px;z-index:1000;}
+.mode-badge{position:fixed;top:130px;right:20px;background:rgba(138,43,226,0.3);padding:8px 16px;border-radius:20px;font-size:12px;z-index:1000;}
 </style>
 </head>
 <body>
@@ -99,28 +100,28 @@ body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a0033 
 <div class="new-tab-page">
 <div style="font-size:120px;margin-bottom:20px;">🥔</div>
 <h1 style="font-size:36px;font-weight:700;margin-bottom:10px;">OmniSearch</h1>
-<p style="opacity:0.9;font-size:18px;margin-bottom:20px;">Python-Powered • Protocol Switching • DPI Evasion 🥔</p>
+<p style="opacity:0.9;font-size:18px;margin-bottom:20px;" id="modeText">Auto-Detecting Mode... 🥔</p>
 
 <div class="search-container">
-<input type="text" class="main-search-input" id="mainSearch" placeholder="🔍 Search with advanced bypass...">
+<input type="text" class="main-search-input" id="mainSearch" placeholder="🔍 Search the web...">
 <div class="search-icon">🔍</div>
 </div>
 
 <div class="reviews-grid">
 <div class="review-card">
-<div style="font-size:24px;margin-bottom:15px;">🐍</div>
-<p><strong>Python Backend</strong></p>
-<p style="font-size:14px;opacity:0.8;margin-top:8px;">Server-side scraping & bypass</p>
-</div>
-<div class="review-card">
 <div style="font-size:24px;margin-bottom:15px;">🔄</div>
-<p><strong>Protocol Switching</strong></p>
-<p style="font-size:14px;opacity:0.8;margin-top:8px;">HTTP/HTTPS auto-fallback</p>
+<p><strong>Hybrid Mode</strong></p>
+<p style="font-size:14px;opacity:0.8;margin-top:8px;">Auto-switches Python ↔ CORS</p>
 </div>
 <div class="review-card">
 <div style="font-size:24px;margin-bottom:15px;">🛡️</div>
-<p><strong>DPI Resistant</strong></p>
-<p style="font-size:14px;opacity:0.8;margin-top:8px;">2026 evasion techniques</p>
+<p><strong>Smart Detection</strong></p>
+<p style="font-size:14px;opacity:0.8;margin-top:8px;">Warns about complex sites</p>
+</div>
+<div class="review-card">
+<div style="font-size:24px;margin-bottom:15px;">🌐</div>
+<p><strong>Visit Real Site</strong></p>
+<p style="font-size:14px;opacity:0.8;margin-top:8px;">One-click to real sites</p>
 </div>
 </div>
 </div>
@@ -128,7 +129,8 @@ body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a0033 
 </div>
 </div>
 
-<div class="powered-by">🥔 Python Backend • Advanced Bypass</div>
+<div class="powered-by" id="modeBadge">🥔 Detecting Mode...</div>
+<div class="mode-badge" id="topModeBadge" style="display:none;"></div>
 
 <div class="settings-modal" id="settingsModal">
 <div class="settings-content">
@@ -157,6 +159,35 @@ body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a0033 
 <script>
 let currentEngine=localStorage.getItem('searchEngine')||'duckduckgo';
 let proxyHomepage=localStorage.getItem('proxyHomepage')||'blank';
+let usePythonBackend=false;
+const CORS_PROXIES=['https://api.allorigins.win/raw?url=','https://corsproxy.io/?'];
+let currentProxyIndex=0;
+
+// Detect if Python backend is available
+async function detectBackend(){
+try{
+const response=await fetch('/api/search?q=test&engine=duckduckgo',{timeout:3000});
+if(response.ok){
+usePythonBackend=true;
+document.getElementById('modeText').textContent='Python Backend • Advanced Bypass 🐍';
+document.getElementById('modeBadge').textContent='🐍 Python Mode';
+document.getElementById('topModeBadge').textContent='🐍 Python';
+document.getElementById('topModeBadge').style.display='block';
+console.log('✅ Python backend detected');
+return true;
+}
+}catch(e){}
+
+usePythonBackend=false;
+document.getElementById('modeText').textContent='CORS Proxy Mode • Client-Side 🌐';
+document.getElementById('modeBadge').textContent='🌐 CORS Mode';
+document.getElementById('topModeBadge').textContent='🌐 CORS';
+document.getElementById('topModeBadge').style.display='block';
+console.log('⚠️ Python backend not available, using CORS proxy');
+return false;
+}
+
+detectBackend();
 
 document.querySelector('.settings-btn').onclick=()=>document.getElementById('settingsModal').classList.add('active');
 document.querySelector('.settings-close').onclick=()=>document.getElementById('settingsModal').classList.remove('active');
@@ -188,33 +219,114 @@ const query=document.getElementById('mainSearch').value.trim();
 if(!query)return;
 
 const view=document.getElementById('view-home');
-view.innerHTML='<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">🥔 Python Backend Searching...</div></div>';
 
+if(usePythonBackend){
+// Use Python backend
+view.innerHTML='<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">🐍 Python Backend Searching...</div></div>';
 try{
 const response=await fetch(`/api/search?q=${encodeURIComponent(query)}&engine=${currentEngine}`);
 const data=await response.json();
-
 if(!data.success||!data.results||data.results.length===0){
-view.innerHTML='<div style="padding:100px 20px;text-align:center;"><div style="font-size:72px;">🥔</div><h2>No Results Found</h2><p>Try another engine</p><button class="back-btn" onclick="location.reload()">← Try Again</button></div>';
+view.innerHTML='<div style="padding:100px 20px;text-align:center;"><div style="font-size:72px;">🥔</div><h2>No Results</h2><button class="back-btn" onclick="location.reload()">← Try Again</button></div>';
 return;
 }
+displayResults(data.results,query);
+}catch(e){
+console.error('Python backend error:',e);
+view.innerHTML='<div style="padding:100px 20px;text-align:center;"><div style="font-size:72px;">🥔</div><h2>Backend Error</h2><p>Switching to CORS mode...</p></div>';
+usePythonBackend=false;
+setTimeout(()=>performSearch(),2000);
+}
+}else{
+// Use CORS proxy fallback
+view.innerHTML='<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">🌐 CORS Proxy Searching...</div></div>';
+try{
+let searchUrl='';
+switch(currentEngine){
+case 'duckduckgo':searchUrl=`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;break;
+case 'google':searchUrl=`https://www.google.com/search?q=${encodeURIComponent(query)}&num=20`;break;
+case 'brave':searchUrl=`https://search.brave.com/search?q=${encodeURIComponent(query)}`;break;
+case 'startpage':searchUrl=`https://www.startpage.com/sp/search?query=${encodeURIComponent(query)}`;break;
+}
+const proxyUrl=CORS_PROXIES[currentProxyIndex]+encodeURIComponent(searchUrl);
+const response=await fetch(proxyUrl);
+if(!response.ok)throw new Error('CORS proxy failed');
+const html=await response.text();
+const results=parseSearchResults(html,currentEngine);
+if(results.length===0){
+view.innerHTML='<div style="padding:100px 20px;text-align:center;"><div style="font-size:72px;">🥔</div><h2>No Results</h2><button class="back-btn" onclick="location.reload()">← Try Again</button></div>';
+return;
+}
+displayResults(results,query);
+}catch(e){
+console.error('CORS error:',e);
+view.innerHTML='<div style="padding:100px 20px;text-align:center;"><div style="font-size:72px;">🥔</div><h2>Search Error</h2><p>All methods failed. Try VPN.</p><button class="back-btn" onclick="location.reload()">← Back</button></div>';
+}
+}
+}
 
-const resultsHtml=data.results.map(r=>`<div class="result-item" onclick="openProxy('${r.url.replace(/'/g,"\\'")}')">
+function displayResults(results,query){
+let instantAnswerHtml='';
+let regularResults=results;
+
+// Check for instant answer
+const instantAnswer=results.find(r=>r.is_instant);
+if(instantAnswer){
+regularResults=results.filter(r=>!r.is_instant);
+instantAnswerHtml=`
+<div style="background:linear-gradient(135deg,#8a2be2,#9300ea);border-radius:25px;padding:30px;margin-bottom:30px;border:2px solid rgba(255,255,255,0.3);box-shadow:0 10px 40px rgba(138,43,226,0.4);">
+<div style="display:flex;align-items:center;gap:15px;margin-bottom:15px;">
+<div style="font-size:42px;">🤖</div>
+<div>
+<div style="font-size:20px;font-weight:700;">${escapeHtml(instantAnswer.title)}</div>
+<div style="font-size:13px;opacity:0.9;">${escapeHtml(instantAnswer.display_url)}</div>
+</div>
+</div>
+<div style="font-size:16px;line-height:1.8;background:rgba(255,255,255,0.15);padding:20px;border-radius:15px;">
+${escapeHtml(instantAnswer.snippet)}
+</div>
+${instantAnswer.url&&instantAnswer.url!=='#'?`<a href="${instantAnswer.url}" target="_blank" style="display:inline-block;margin-top:15px;color:white;text-decoration:none;font-size:14px;opacity:0.9;">Learn more →</a>`:''}
+</div>`;
+}
+
+const resultsHtml=regularResults.map(r=>`<div class="result-item" onclick="openProxy('${r.url.replace(/'/g,"\\'")}')">
 <div class="result-title">${escapeHtml(r.title)}</div>
 <div class="result-url">${escapeHtml(r.display_url)}</div>
 <div class="result-snippet">${escapeHtml(r.snippet)}</div>
 </div>`).join('');
 
-view.innerHTML=`<div class="search-results-container">
+document.getElementById('view-home').innerHTML=`<div class="search-results-container">
 <div class="results-header">
 <button class="back-btn" onclick="location.reload()">← New Search</button>
-<span style="color:rgba(255,255,255,0.8);margin-left:20px;">${data.results.length} results • ${currentEngine}</span>
-</div>${resultsHtml}</div>`;
-
-}catch(e){
-console.error('Search error:',e);
-view.innerHTML='<div style="padding:100px 20px;text-align:center;"><div style="font-size:72px;">🥔</div><h2>Backend Error</h2><p>Make sure Python server is running</p><button class="back-btn" onclick="location.reload()">← Back</button></div>';
+<span style="color:rgba(255,255,255,0.8);margin-left:20px;">${regularResults.length} results • ${currentEngine}</span>
+</div>
+${instantAnswerHtml}
+${resultsHtml}
+</div>`;
 }
+
+function parseSearchResults(html,engine){
+const parser=new DOMParser();
+const doc=parser.parseFromString(html,'text/html');
+const results=[];
+if(engine==='duckduckgo'){
+doc.querySelectorAll('.result__body').forEach(item=>{
+const link=item.querySelector('.result__a');
+if(!link)return;
+let url=link.href;
+const match=url.match(/uddg=([^&]+)/);
+if(match)url=decodeURIComponent(match[1]);
+results.push({title:link.textContent.trim(),url:url,display_url:new URL(url).hostname.replace('www.',''),snippet:item.querySelector('.result__snippet')?.textContent.trim()||''});
+});
+}else if(engine==='google'){
+doc.querySelectorAll('.g,div[data-sokoban-container]').forEach(item=>{
+const link=item.querySelector('a');
+const h3=item.querySelector('h3');
+if(!link||!h3||link.href.includes('google.com/search'))return;
+results.push({title:h3.textContent.trim(),url:link.href,display_url:new URL(link.href).hostname.replace('www.',''),snippet:item.querySelector('.VwiC3b')?.textContent.trim()||''});
+});
+}
+return results.slice(0,20);
 }
 
 function searchOrNavigate(){
@@ -229,64 +341,45 @@ performSearch();
 }
 
 function openProxy(url){
-// Detect complex sites that won't work well in proxy
 const complexSites=['chatgpt.com','openai.com','perplexity.ai','poki.com','youtube.com','netflix.com','discord.com','spotify.com','twitch.tv','roblox.com'];
 const isComplex=complexSites.some(site=>url.toLowerCase().includes(site));
-
 if(isComplex){
-// Show warning modal
 const view=document.getElementById('view-home');
-view.innerHTML=`
-<div style="padding:60px 20px;text-align:center;overflow-y:auto;height:100%;">
+view.innerHTML=`<div style="padding:60px 20px;text-align:center;overflow-y:auto;height:100%;">
 <div style="font-size:92px;margin-bottom:20px;">⚠️</div>
 <h1 style="font-size:32px;margin-bottom:20px;">Complex Site Detected</h1>
 <p style="font-size:18px;opacity:0.9;margin-bottom:30px;max-width:600px;margin-left:auto;margin-right:auto;">
-This site uses advanced features (WebSockets, WebGL, AI APIs) that won't work properly in a proxy.
+This site uses advanced features (WebSockets, WebGL, AI APIs) that won't work in a proxy.
 </p>
 <div style="background:rgba(255,255,255,0.1);padding:20px;border-radius:20px;margin:30px auto;max-width:500px;">
 <p style="font-size:14px;opacity:0.8;margin-bottom:10px;">Site:</p>
 <p style="font-family:monospace;font-size:14px;color:#a78bfa;word-break:break-all;">${url}</p>
 </div>
 <div style="display:flex;gap:15px;justify-content:center;flex-wrap:wrap;margin-top:30px;">
-<button onclick="window.open('${url}','_blank')" 
-style="background:linear-gradient(135deg,#8a2be2,#9300ea);color:white;border:none;padding:15px 30px;border-radius:25px;font-weight:600;font-size:16px;cursor:pointer;">
-🌐 Visit Real Site
-</button>
-<button onclick="tryProxyAnyway('${url}')" 
-style="background:rgba(255,255,255,0.2);color:white;border:none;padding:15px 30px;border-radius:25px;font-weight:600;font-size:16px;cursor:pointer;">
-Try Proxy Anyway
-</button>
-<button onclick="location.reload()" 
-style="background:rgba(255,255,255,0.1);color:white;border:none;padding:15px 30px;border-radius:25px;font-weight:600;font-size:16px;cursor:pointer;">
-← Back
-</button>
-</div>
-<div style="margin-top:40px;padding:20px;background:rgba(138,43,226,0.2);border-radius:15px;max-width:600px;margin-left:auto;margin-right:auto;">
-<p style="font-size:14px;margin-bottom:10px;"><strong>💡 Why complex sites don't work:</strong></p>
-<ul style="text-align:left;font-size:13px;opacity:0.8;line-height:1.8;padding-left:20px;">
-<li><strong>ChatGPT/Perplexity:</strong> Need WebSocket real-time connections</li>
-<li><strong>Poki Games:</strong> Require Canvas, WebGL & complex JavaScript</li>
-<li><strong>YouTube:</strong> Video streaming + DRM protection</li>
-<li><strong>Discord/Spotify:</strong> Real-time audio/WebRTC</li>
-</ul>
-</div>
-<p style="font-size:12px;opacity:0.6;margin-top:30px;">
-🥔 Tip: For best experience with these sites, use a VPN or access directly
-</p>
-</div>`;
+<button onclick="window.open('${url}','_blank')" style="background:linear-gradient(135deg,#8a2be2,#9300ea);color:white;border:none;padding:15px 30px;border-radius:25px;font-weight:600;font-size:16px;cursor:pointer;">🌐 Visit Real Site</button>
+<button onclick="tryProxyAnyway('${url}')" style="background:rgba(255,255,255,0.2);color:white;border:none;padding:15px 30px;border-radius:25px;font-weight:600;font-size:16px;cursor:pointer;">Try Proxy Anyway</button>
+<button onclick="location.reload()" style="background:rgba(255,255,255,0.1);color:white;border:none;padding:15px 30px;border-radius:25px;font-weight:600;font-size:16px;cursor:pointer;">← Back</button>
+</div></div>`;
 return;
 }
-
-// Regular proxy for simple sites
 const view=document.getElementById('view-home');
+if(usePythonBackend){
 const encoded=btoa(url);
-view.innerHTML=`<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">Loading via Python...</div></div><iframe class="proxy-frame" src="/api/proxy?url=${encoded}" onload="this.previousElementSibling.remove()"></iframe>`;
+view.innerHTML=`<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">Loading...</div></div><iframe class="proxy-frame" src="/api/proxy?url=${encoded}" onload="this.previousElementSibling.remove()"></iframe>`;
+}else{
+const proxyUrl=CORS_PROXIES[currentProxyIndex]+encodeURIComponent(url);
+view.innerHTML=`<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">Loading...</div></div><iframe class="proxy-frame" src="${proxyUrl}" onload="this.previousElementSibling.remove()"></iframe>`;
+}
 }
 
 function tryProxyAnyway(url){
 const view=document.getElementById('view-home');
+if(usePythonBackend){
 const encoded=btoa(url);
-view.innerHTML=`<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">Loading (may not work)...</div></div><iframe class="proxy-frame" src="/api/proxy?url=${encoded}" onload="this.previousElementSibling.remove()"></iframe>`;
+view.innerHTML=`<iframe class="proxy-frame" src="/api/proxy?url=${encoded}"></iframe>`;
+}else{
+view.innerHTML=`<iframe class="proxy-frame" src="${CORS_PROXIES[currentProxyIndex]+encodeURIComponent(url)}"></iframe>`;
+}
 }
 
 function escapeHtml(text){
