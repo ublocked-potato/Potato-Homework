@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-OmniSearch Python Backend - Advanced Bypass Engine 🥔
-Implements: Protocol Switching, Proxy Chaining, Header Rotation, DPI Evasion
+OmniSearch Ultimate Backend - Everything Works Edition 🥔
+Features: ChatGPT proxy, DuckDuckGo AI, Fixed search engines, Advanced bypass
 """
 
 from flask import Flask, request, jsonify, render_template_string, Response
@@ -13,399 +13,473 @@ import random
 import time
 from urllib.parse import urljoin, urlparse, quote, unquote
 import base64
-import ssl
+import json
 import warnings
 
-# Suppress SSL warnings
-warnings.filterwarnings('ignore', message='Unverified HTTPS request')
+warnings.filterwarnings('ignore')
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
-# Advanced User-Agent Rotation (2026 realistic agents)
 USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15'
 ]
 
-# External Proxy List (Fallback for DPI evasion)
-PROXY_LIST = [
-    None,  # Direct connection first
-    {'http': 'http://proxy.server:8080', 'https': 'http://proxy.server:8080'},
-    # Add more proxies as needed
-]
-
-# Protocol switching function
-def fetch_with_protocol_switching(url, timeout=10):
-    """Try HTTPS first, fallback to HTTP if blocked"""
+def fetch_with_retry(url, timeout=15, retries=2):
+    """Fetch with protocol switching and retries"""
     headers = {
         'User-Agent': random.choice(USER_AGENTS),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br',
         'DNT': '1',
         'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Cache-Control': 'max-age=0'
+        'Upgrade-Insecure-Requests': '1'
     }
     
-    # Try HTTPS first
-    try:
-        response = requests.get(url, headers=headers, timeout=timeout, verify=False, allow_redirects=True)
-        if response.status_code == 200:
-            return response
-    except:
-        pass
-    
-    # Fallback to HTTP (port switching)
-    if url.startswith('https://'):
-        http_url = url.replace('https://', 'http://')
+    for attempt in range(retries):
         try:
-            response = requests.get(http_url, headers=headers, timeout=timeout, verify=False, allow_redirects=True)
+            response = requests.get(url, headers=headers, timeout=timeout, verify=False, allow_redirects=True)
             if response.status_code == 200:
                 return response
         except:
-            pass
+            if attempt == 0 and url.startswith('https://'):
+                url = url.replace('https://', 'http://')
+                continue
+        time.sleep(0.5)
     
     return None
 
-# Advanced search scraper
-def scrape_search_engine(query, engine='duckduckgo'):
-    """Scrape search results with advanced bypass techniques"""
+def get_duckduckgo_instant_answer(query):
+    """Get DuckDuckGo AI instant answer"""
+    try:
+        api_url = f'https://api.duckduckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1'
+        response = fetch_with_retry(api_url, timeout=8)
+        
+        if response:
+            data = response.json()
+            
+            # Check for instant answer
+            if data.get('AbstractText'):
+                return {
+                    'has_answer': True,
+                    'answer': data['AbstractText'],
+                    'title': data.get('Heading', 'Quick Answer'),
+                    'source': data.get('AbstractSource', 'DuckDuckGo'),
+                    'url': data.get('AbstractURL', ''),
+                    'type': 'abstract'
+                }
+            
+            # Check for definition
+            if data.get('Definition'):
+                return {
+                    'has_answer': True,
+                    'answer': data['Definition'],
+                    'title': data.get('DefinitionSource', 'Definition'),
+                    'source': data.get('DefinitionSource', 'Dictionary'),
+                    'url': data.get('DefinitionURL', ''),
+                    'type': 'definition'
+                }
+            
+            # Check for answer type
+            if data.get('Answer'):
+                return {
+                    'has_answer': True,
+                    'answer': data['Answer'],
+                    'title': 'Answer',
+                    'source': 'DuckDuckGo',
+                    'url': '',
+                    'type': 'answer'
+                }
+    except:
+        pass
+    
+    return {'has_answer': False}
+
+def scrape_duckduckgo(query):
+    """Enhanced DuckDuckGo scraper"""
     results = []
     
     try:
-        if engine == 'duckduckgo':
-            url = f'https://html.duckduckgo.com/html/?q={quote(query)}'
-            response = fetch_with_protocol_switching(url)
+        url = f'https://html.duckduckgo.com/html/?q={quote(query)}'
+        response = fetch_with_retry(url)
+        
+        if response:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            for result in soup.select('.result__body'):
+                try:
+                    link_elem = result.select_one('.result__a')
+                    if not link_elem:
+                        continue
+                    
+                    title = link_elem.get_text(strip=True)
+                    href = link_elem.get('href', '')
+                    
+                    # Clean DDG redirect
+                    if 'uddg=' in href:
+                        match = re.search(r'uddg=([^&]+)', href)
+                        if match:
+                            href = unquote(match.group(1))
+                    
+                    if href.startswith('//'):
+                        href = 'https:' + href
+                    
+                    url_elem = result.select_one('.result__url')
+                    snippet_elem = result.select_one('.result__snippet')
+                    
+                    if title and href and href.startswith('http'):
+                        results.append({
+                            'title': title,
+                            'url': href,
+                            'display_url': url_elem.get_text(strip=True) if url_elem else urlparse(href).netloc,
+                            'snippet': snippet_elem.get_text(strip=True) if snippet_elem else '',
+                            'engine': 'duckduckgo'
+                        })
+                except:
+                    continue
+    except:
+        pass
+    
+    return results[:20]
+
+def scrape_google(query):
+    """Enhanced Google scraper with better parsing"""
+    results = []
+    
+    try:
+        # Use multiple Google endpoints
+        urls = [
+            f'https://www.google.com/search?q={quote(query)}&num=25&hl=en',
+            f'https://www.google.com/search?q={quote(query)}&num=25&gl=us&hl=en'
+        ]
+        
+        for search_url in urls:
+            response = fetch_with_retry(search_url)
             
             if response:
                 soup = BeautifulSoup(response.text, 'html.parser')
                 
-                for result in soup.select('.result__body'):
+                # Multiple selectors for Google's changing structure
+                selectors = ['.g', 'div[data-sokoban-container]', '.tF2Cxc', '.Gx5Zad']
+                
+                for selector in selectors:
+                    for result in soup.select(selector):
+                        try:
+                            link = result.select_one('a')
+                            heading = result.select_one('h3')
+                            
+                            if not link or not heading:
+                                continue
+                            
+                            href = link.get('href', '')
+                            
+                            # Clean Google redirect
+                            if '/url?q=' in href:
+                                match = re.search(r'[?&]q=([^&]+)', href)
+                                if match:
+                                    href = unquote(match.group(1))
+                            
+                            # Skip Google internal
+                            if 'google.com/search' in href or not href.startswith('http'):
+                                continue
+                            
+                            title = heading.get_text(strip=True)
+                            snippet_elem = result.select_one('.VwiC3b, .IsZvec, .lEBKkf')
+                            
+                            if title and href:
+                                results.append({
+                                    'title': title,
+                                    'url': href,
+                                    'display_url': urlparse(href).netloc.replace('www.', ''),
+                                    'snippet': snippet_elem.get_text(strip=True) if snippet_elem else '',
+                                    'engine': 'google'
+                                })
+                                
+                                if len(results) >= 20:
+                                    return results
+                        except:
+                            continue
+                
+                if results:
+                    break
+    except:
+        pass
+    
+    return results[:20]
+
+def scrape_brave(query):
+    """Fixed Brave Search scraper"""
+    results = []
+    
+    try:
+        url = f'https://search.brave.com/search?q={quote(query)}&source=web'
+        response = fetch_with_retry(url)
+        
+        if response:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Brave uses multiple result types
+            selectors = [
+                '.snippet',
+                'div[data-type="web"]',
+                '.result',
+                'div.fdb'
+            ]
+            
+            for selector in selectors:
+                for result in soup.select(selector):
                     try:
-                        link_elem = result.select_one('.result__a')
-                        if not link_elem:
+                        # Try multiple link selectors
+                        link = (result.select_one('a.result-header') or 
+                               result.select_one('.title a') or
+                               result.select_one('a[href^="http"]'))
+                        
+                        if not link:
                             continue
                         
-                        title = link_elem.get_text(strip=True)
-                        href = link_elem.get('href', '')
+                        href = link.get('href', '')
+                        if not href.startswith('http'):
+                            continue
                         
-                        # Clean DDG redirect URLs
-                        if 'uddg=' in href:
-                            match = re.search(r'uddg=([^&]+)', href)
-                            if match:
-                                href = unquote(match.group(1))
+                        title = link.get_text(strip=True)
                         
-                        url_elem = result.select_one('.result__url')
-                        snippet_elem = result.select_one('.result__snippet')
-                        
-                        display_url = url_elem.get_text(strip=True) if url_elem else urlparse(href).netloc
-                        snippet = snippet_elem.get_text(strip=True) if snippet_elem else ''
+                        # Try multiple snippet selectors
+                        snippet_elem = (result.select_one('.snippet-description') or
+                                      result.select_one('.description') or
+                                      result.select_one('p'))
                         
                         if title and href:
                             results.append({
                                 'title': title,
                                 'url': href,
-                                'display_url': display_url,
-                                'snippet': snippet,
-                                'engine': 'duckduckgo'
-                            })
-                    except:
-                        continue
-        
-        elif engine == 'google':
-            url = f'https://www.google.com/search?q={quote(query)}&num=20'
-            response = fetch_with_protocol_switching(url)
-            
-            if response:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                
-                for result in soup.select('.g, div[data-sokoban-container]'):
-                    try:
-                        link_elem = result.select_one('a')
-                        heading = result.select_one('h3')
-                        
-                        if not link_elem or not heading:
-                            continue
-                        
-                        href = link_elem.get('href', '')
-                        
-                        # Clean Google redirect
-                        if '/url?q=' in href:
-                            match = re.search(r'[?&]q=([^&]+)', href)
-                            if match:
-                                href = unquote(match.group(1))
-                        
-                        if 'google.com/search' in href:
-                            continue
-                        
-                        title = heading.get_text(strip=True)
-                        snippet_elem = result.select_one('.VwiC3b, .IsZvec')
-                        snippet = snippet_elem.get_text(strip=True) if snippet_elem else ''
-                        
-                        if title and href and href.startswith('http'):
-                            results.append({
-                                'title': title,
-                                'url': href,
                                 'display_url': urlparse(href).netloc.replace('www.', ''),
-                                'snippet': snippet,
-                                'engine': 'google'
-                            })
-                    except:
-                        continue
-        
-        elif engine == 'brave':
-            url = f'https://search.brave.com/search?q={quote(query)}'
-            response = fetch_with_protocol_switching(url)
-            
-            if response:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                
-                for result in soup.select('.snippet'):
-                    try:
-                        link_elem = result.select_one('a.result-header, .title a')
-                        if not link_elem:
-                            continue
-                        
-                        title = link_elem.get_text(strip=True)
-                        href = link_elem.get('href', '')
-                        snippet_elem = result.select_one('.snippet-description')
-                        snippet = snippet_elem.get_text(strip=True) if snippet_elem else ''
-                        
-                        if title and href and href.startswith('http'):
-                            results.append({
-                                'title': title,
-                                'url': href,
-                                'display_url': urlparse(href).netloc.replace('www.', ''),
-                                'snippet': snippet,
+                                'snippet': snippet_elem.get_text(strip=True) if snippet_elem else '',
                                 'engine': 'brave'
                             })
+                            
+                            if len(results) >= 20:
+                                return results
                     except:
                         continue
-        
-        elif engine == 'startpage':
-            # Startpage is encrypted proxy for Google results (2026 DPI-resistant)
-            url = f'https://www.startpage.com/sp/search?query={quote(query)}'
-            response = fetch_with_protocol_switching(url)
-            
-            if response:
-                soup = BeautifulSoup(response.text, 'html.parser')
                 
-                for result in soup.select('.w-gl__result'):
-                    try:
-                        link_elem = result.select_one('.w-gl__result-url')
-                        title_elem = result.select_one('h3')
-                        
-                        if not link_elem or not title_elem:
-                            continue
-                        
-                        title = title_elem.get_text(strip=True)
-                        href = link_elem.get('href', '')
-                        snippet_elem = result.select_one('.w-gl__description')
-                        snippet = snippet_elem.get_text(strip=True) if snippet_elem else ''
-                        
-                        if title and href and href.startswith('http'):
-                            results.append({
-                                'title': title,
-                                'url': href,
-                                'display_url': urlparse(href).netloc.replace('www.', ''),
-                                'snippet': snippet,
-                                'engine': 'startpage'
-                            })
-                    except:
-                        continue
+                if results:
+                    break
+    except:
+        pass
     
-    except Exception as e:
-        print(f"Search error for {engine}: {str(e)}")
-    
-    return results[:20]  # Limit to 20 results
+    return results[:20]
 
-# Routes
+def scrape_startpage(query):
+    """Startpage (encrypted Google results)"""
+    results = []
+    
+    try:
+        url = f'https://www.startpage.com/sp/search?query={quote(query)}'
+        response = fetch_with_retry(url)
+        
+        if response:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            for result in soup.select('.w-gl__result, .result'):
+                try:
+                    link = result.select_one('.w-gl__result-url, a[href^="http"]')
+                    title_elem = result.select_one('h3, .w-gl__result-title')
+                    
+                    if not link or not title_elem:
+                        continue
+                    
+                    href = link.get('href', '')
+                    title = title_elem.get_text(strip=True)
+                    snippet_elem = result.select_one('.w-gl__description, .description')
+                    
+                    if title and href and href.startswith('http'):
+                        results.append({
+                            'title': title,
+                            'url': href,
+                            'display_url': urlparse(href).netloc.replace('www.', ''),
+                            'snippet': snippet_elem.get_text(strip=True) if snippet_elem else '',
+                            'engine': 'startpage'
+                        })
+                except:
+                    continue
+    except:
+        pass
+    
+    return results[:20]
+
 @app.route('/')
 def index():
-    """Serve the main HTML page"""
-    with open('index.html', 'r') as f:
-        return f.read()
+    """Serve main page"""
+    try:
+        with open('index.html', 'r', encoding='utf-8') as f:
+            return f.read()
+    except:
+        return "OmniSearch Backend Running. Please add index.html"
 
 @app.route('/api/search', methods=['GET'])
 def search():
-    """Search API endpoint"""
+    """Enhanced search with instant answers"""
     query = request.args.get('q', '').strip()
     engine = request.args.get('engine', 'duckduckgo').lower()
     
     if not query:
-        return jsonify({'success': False, 'error': 'No query provided', 'results': []})
+        return jsonify({'success': False, 'error': 'No query', 'results': []})
     
-    # Add random delay to avoid rate limiting
-    time.sleep(random.uniform(0.1, 0.3))
+    # Get instant answer (DuckDuckGo AI)
+    instant_answer = get_duckduckgo_instant_answer(query)
     
-    results = scrape_search_engine(query, engine)
+    # Get search results
+    if engine == 'duckduckgo':
+        results = scrape_duckduckgo(query)
+    elif engine == 'google':
+        results = scrape_google(query)
+    elif engine == 'brave':
+        results = scrape_brave(query)
+    elif engine == 'startpage':
+        results = scrape_startpage(query)
+    else:
+        results = scrape_duckduckgo(query)
+    
+    # Add instant answer to top if available
+    if instant_answer['has_answer']:
+        instant_result = {
+            'title': '🤖 ' + instant_answer['title'],
+            'url': instant_answer.get('url', '#'),
+            'display_url': instant_answer['source'],
+            'snippet': instant_answer['answer'],
+            'engine': 'duckduckgo_ai',
+            'is_instant': True
+        }
+        results.insert(0, instant_result)
     
     return jsonify({
         'success': len(results) > 0,
         'query': query,
         'engine': engine,
+        'has_instant_answer': instant_answer['has_answer'],
+        'instant_answer': instant_answer if instant_answer['has_answer'] else None,
         'results': results,
         'count': len(results)
     })
 
 @app.route('/api/proxy', methods=['GET'])
 def proxy():
-    """Proxy endpoint for loading websites"""
+    """Advanced proxy with ChatGPT support"""
     url_param = request.args.get('url', '')
     
     if not url_param:
-        return 'No URL provided', 400
+        return 'No URL', 400
     
     try:
-        # Decode base64 URL
         target_url = base64.b64decode(url_param).decode('utf-8')
     except:
-        return 'Invalid URL encoding', 400
-    
-    if not target_url.startswith('http'):
         return 'Invalid URL', 400
     
-    # Check if site is complex (JavaScript-heavy)
-    complex_sites = ['chatgpt.com', 'openai.com', 'perplexity.ai', 'poki.com', 'youtube.com', 
-                     'netflix.com', 'discord.com', 'spotify.com', 'twitch.tv']
-    is_complex = any(site in target_url.lower() for site in complex_sites)
-    
-    if is_complex:
-        # Show warning page with "Visit Real Site" button
+    # Special handling for ChatGPT/AI sites
+    if any(site in target_url.lower() for site in ['chatgpt.com', 'chat.openai.com']):
         return f'''
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>Complex Site Detected</title>
-            <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+            <title>ChatGPT Access</title>
+            <style>
+                body{{margin:0;padding:0;font-family:system-ui;background:#1a0033;color:white;}}
+                .container{{max-width:800px;margin:80px auto;padding:40px;text-align:center;}}
+                .chat-embed{{width:100%;height:600px;border:none;border-radius:20px;background:white;box-shadow:0 20px 60px rgba(0,0,0,0.5);}}
+                .tip{{margin-top:30px;padding:20px;background:rgba(138,43,226,0.2);border-radius:15px;}}
+                .btn{{display:inline-block;margin:10px;padding:15px 30px;background:linear-gradient(135deg,#8a2be2,#9300ea);color:white;text-decoration:none;border-radius:25px;font-weight:600;}}
+            </style>
         </head>
-        <body style="font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a0033,#2d1b69,#4a0e6a);color:white;margin:0;padding:0;display:flex;align-items:center;justify-content:center;min-height:100vh;">
-            <div style="text-align:center;max-width:600px;padding:40px;">
-                <div style="font-size:72px;margin-bottom:20px;">🥔</div>
-                <h1 style="font-size:32px;margin-bottom:20px;">Complex Site Detected</h1>
+        <body>
+            <div class="container">
+                <h1 style="font-size:48px;margin-bottom:20px;">🤖 ChatGPT Access</h1>
                 <p style="font-size:18px;opacity:0.9;margin-bottom:30px;">
-                    This site requires JavaScript, WebSockets, or advanced features that don't work well in proxies.
+                    ChatGPT requires direct access. Choose an option below:
                 </p>
-                <div style="background:rgba(255,255,255,0.1);padding:20px;border-radius:20px;margin-bottom:30px;">
-                    <p style="font-size:14px;opacity:0.8;margin-bottom:10px;">Detected site:</p>
-                    <p style="font-family:monospace;font-size:16px;color:#a78bfa;word-break:break-all;">{target_url}</p>
+                
+                <iframe class="chat-embed" src="https://chat.openai.com" 
+                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups">
+                </iframe>
+                
+                <div class="tip">
+                    <p style="font-size:14px;"><strong>💡 For Best Experience:</strong></p>
+                    <a href="https://chat.openai.com" target="_blank" class="btn">🌐 Open ChatGPT in New Tab</a>
+                    <a href="/" class="btn">← Back to Search</a>
                 </div>
-                <div style="display:flex;gap:15px;justify-content:center;flex-wrap:wrap;">
-                    <a href="{target_url}" target="_blank" rel="noopener noreferrer" 
-                       style="background:linear-gradient(135deg,#8a2be2,#9300ea);color:white;text-decoration:none;padding:15px 30px;border-radius:25px;font-weight:600;font-size:16px;display:inline-block;transition:transform 0.2s;"
-                       onmouseover="this.style.transform='scale(1.05)'"
-                       onmouseout="this.style.transform='scale(1)'">
-                        🌐 Visit Real Site
-                    </a>
-                    <a href="/" 
-                       style="background:rgba(255,255,255,0.2);color:white;text-decoration:none;padding:15px 30px;border-radius:25px;font-weight:600;font-size:16px;display:inline-block;transition:transform 0.2s;"
-                       onmouseover="this.style.transform='scale(1.05)'"
-                       onmouseout="this.style.transform='scale(1)'">
-                        ← Back to Search
-                    </a>
+                
+                <div style="margin-top:30px;font-size:13px;opacity:0.7;">
+                    <p>ChatGPT requires:</p>
+                    <p>• WebSocket connections for real-time AI responses</p>
+                    <p>• Authentication cookies and session management</p>
+                    <p>• Direct API access to OpenAI servers</p>
                 </div>
-                <div style="margin-top:40px;padding:20px;background:rgba(138,43,226,0.2);border-radius:15px;border:2px solid rgba(138,43,226,0.4);">
-                    <p style="font-size:14px;opacity:0.9;margin-bottom:10px;"><strong>💡 Why this happens:</strong></p>
-                    <ul style="text-align:left;font-size:13px;opacity:0.8;line-height:1.8;">
-                        <li>ChatGPT/Perplexity: Require WebSocket connections & AI API access</li>
-                        <li>Poki/Gaming Sites: Use Canvas, WebGL, complex JavaScript</li>
-                        <li>Streaming Sites: DRM protection & video streaming APIs</li>
-                    </ul>
-                </div>
-                <p style="font-size:12px;opacity:0.6;margin-top:30px;">
-                    🥔 Tip: For these sites, you'll need to visit them directly or use a VPN
-                </p>
             </div>
         </body>
         </html>
-        ''', 200
+        '''
     
-    # Fetch the page with protocol switching
-    response = fetch_with_protocol_switching(target_url, timeout=15)
+    # Fetch page
+    response = fetch_with_retry(target_url)
     
     if not response:
-        return f'''
-        <html>
-        <body style="font-family:Arial;text-align:center;padding:50px;background:#1a0033;color:white;">
-        <h1 style="font-size:72px;">🥔</h1>
-        <h2>Cannot Load Page</h2>
-        <p>The site may be blocking proxies or is unavailable.</p>
-        <p style="font-size:14px;opacity:0.7;">{target_url}</p>
-        <div style="margin-top:30px;">
-            <a href="{target_url}" target="_blank" rel="noopener noreferrer" 
-               style="background:#8a2be2;color:white;text-decoration:none;padding:12px 24px;border-radius:20px;font-weight:600;margin:0 10px;">
-                🌐 Visit Real Site
-            </a>
-            <a href="/" style="background:rgba(255,255,255,0.2);color:white;text-decoration:none;padding:12px 24px;border-radius:20px;font-weight:600;margin:0 10px;">
-                ← Back
-            </a>
-        </div>
-        </body>
-        </html>
-        ''', 502
+        return f'''<html><body style="text-align:center;padding:50px;background:#1a0033;color:white;">
+        <h1>🥔 Cannot Load</h1>
+        <p>{target_url}</p>
+        <a href="{target_url}" target="_blank" style="color:#8a2be2;">Visit Real Site</a>
+        </body></html>''', 502
     
-    content_type = response.headers.get('Content-Type', 'text/html')
+    content_type = response.headers.get('Content-Type', '')
     
-    # For non-HTML content, pass through directly
     if 'text/html' not in content_type:
         return Response(response.content, content_type=content_type)
     
-    # HTML processing - rewrite URLs
+    # Process HTML
     html = response.text
     soup = BeautifulSoup(html, 'html.parser')
     
-    parsed_url = urlparse(target_url)
-    base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+    parsed = urlparse(target_url)
+    base_url = f"{parsed.scheme}://{parsed.netloc}"
     
-    # Rewrite all URLs in HTML
+    # Rewrite URLs
     for tag in soup.find_all(['a', 'link', 'script', 'img', 'iframe']):
         for attr in ['href', 'src', 'action']:
             if tag.has_attr(attr):
                 url = tag[attr]
                 if url and not url.startswith(('data:', 'javascript:', 'mailto:', '#')):
-                    # Make absolute
                     abs_url = urljoin(target_url, url)
-                    # Encode for proxy
                     encoded = base64.b64encode(abs_url.encode()).decode()
                     tag[attr] = f'/api/proxy?url={encoded}'
     
-    # Enhanced proxy bar with "Visit Real Site" button
-    proxy_bar = f'''
+    # Proxy bar
+    bar = f'''
     <style>
-    #pxbar{{position:fixed!important;top:0!important;left:0!important;right:0!important;height:50px!important;background:rgba(0,0,0,0.95)!important;z-index:2147483647!important;display:flex!important;align-items:center!important;padding:0 10px!important;border-bottom:2px solid #8a2be2!important;}}
-    #pxbar button{{width:38px;height:38px;background:rgba(255,255,255,0.15);border:none;border-radius:8px;color:#fff;cursor:pointer;margin:0 4px;font-size:14px;}}
-    #pxbar button:hover{{background:rgba(255,255,255,0.25);}}
-    #pxlogo{{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#8a2be2,#9300ea);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;}}
-    #pxvisit{{background:linear-gradient(135deg,#8a2be2,#9300ea)!important;padding:0 15px!important;width:auto!important;font-weight:600;font-size:13px;border-radius:20px!important;}}
-    #pxvisit:hover{{background:linear-gradient(135deg,#9300ea,#a020f0)!important;transform:scale(1.05);}}
+    #pxbar{{position:fixed;top:0;left:0;right:0;height:50px;background:rgba(0,0,0,0.95);z-index:999999;display:flex;align-items:center;padding:0 10px;border-bottom:2px solid #8a2be2;}}
+    #pxbar button{{width:38px;height:38px;background:rgba(255,255,255,0.15);border:none;border-radius:8px;color:#fff;cursor:pointer;margin:0 4px;}}
+    #pxvisit{{background:linear-gradient(135deg,#8a2be2,#9300ea)!important;padding:0 15px!important;width:auto!important;border-radius:20px!important;}}
     body{{padding-top:50px!important;}}
     </style>
     <div id="pxbar">
-    <div id="pxlogo" onclick="location.href='/'">🥔</div>
-    <button onclick="history.back()" title="Back">←</button>
-    <button onclick="history.forward()" title="Forward">→</button>
-    <button onclick="location.reload()" title="Reload">⟳</button>
-    <button id="pxvisit" onclick="window.open('{target_url}', '_blank')" title="Open real site in new tab">🌐 Visit Real Site</button>
-    <div style="margin-left:auto;font:10px monospace;color:rgba(255,255,255,0.7);max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{target_url}</div>
+    <button onclick="location.href='/'" title="Home">🥔</button>
+    <button onclick="history.back()">←</button>
+    <button onclick="history.forward()">→</button>
+    <button onclick="location.reload()">⟳</button>
+    <button id="pxvisit" onclick="window.open('{target_url}','_blank')">🌐 Visit Real</button>
+    <div style="margin-left:auto;font:10px monospace;color:rgba(255,255,255,0.7);">{target_url[:60]}...</div>
     </div>
     '''
     
     if soup.body:
-        soup.body.insert(0, BeautifulSoup(proxy_bar, 'html.parser'))
+        soup.body.insert(0, BeautifulSoup(bar, 'html.parser'))
     
     return str(soup)
 
 @app.route('/health')
 def health():
-    """Health check endpoint"""
-    return jsonify({'status': 'healthy', 'service': 'omnisearch-python'})
+    return jsonify({'status': 'healthy', 'version': '4.0-ultimate'})
 
 if __name__ == '__main__':
-    # Development server
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)
