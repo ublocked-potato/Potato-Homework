@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Google Classroom</title>
-<link rel="icon" href="https://ssl.gstatic.com/classroom/favicon.png">
+<title id="pageTitle">Google Classroom</title>
+<link rel="icon" id="favicon" href="https://ssl.gstatic.com/classroom/favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 <style>
@@ -60,11 +60,15 @@ body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a0033 
 .settings-close{background:none;border:none;color:white;font-size:32px;cursor:pointer;}
 .setting-group{margin-bottom:30px;}
 .setting-group h3{margin-bottom:15px;color:#a78bfa;}
-.setting-option{background:rgba(255,255,255,0.1);padding:15px;border-radius:15px;margin-bottom:10px;cursor:pointer;}
+.setting-option{background:rgba(255,255,255,0.1);padding:15px;border-radius:15px;margin-bottom:10px;cursor:pointer;transition:all 0.3s;}
 .setting-option:hover{background:rgba(255,255,255,0.15);}
 .setting-option.active{background:rgba(138,43,226,0.3);border:2px solid #8a2be2;}
 .powered-by{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.4);padding:12px 25px;border-radius:30px;z-index:1000;}
 .mode-badge{position:fixed;top:130px;right:20px;background:rgba(138,43,226,0.3);padding:8px 16px;border-radius:20px;font-size:12px;z-index:1000;}
+
+/* Disguise frames */
+.disguise-frame{width:100%;height:100%;border:none;display:none;}
+.disguise-frame.active{display:block;}
 </style>
 </head>
 <body>
@@ -125,6 +129,10 @@ body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a0033 
 </div>
 </div>
 </div>
+
+<!-- Disguise iframes -->
+<iframe class="disguise-frame" id="googleFrame" src="https://www.google.com"></iframe>
+<iframe class="disguise-frame" id="classroomFrame" src="https://classroom.google.com"></iframe>
 </div>
 </div>
 </div>
@@ -140,28 +148,34 @@ body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a0033 
 </div>
 <div class="setting-group">
 <h3>🏠 Proxy Homepage</h3>
-<div class="setting-option active" data-homepage="blank">
+<div class="setting-option" data-homepage="blank">
 <strong>Blank Page</strong>
-<p style="font-size:13px;opacity:0.8;margin-top:5px;">Maximum stealth</p>
+<p style="font-size:13px;opacity:0.8;margin-top:5px;">Maximum stealth • URL shows "about:blank"</p>
 </div>
 <div class="setting-option" data-homepage="google">
 <strong>Google</strong>
-<p style="font-size:13px;opacity:0.8;margin-top:5px;">Google homepage</p>
+<p style="font-size:13px;opacity:0.8;margin-top:5px;">Disguise as Google homepage</p>
 </div>
-<div class="setting-option" data-homepage="classroom">
+<div class="setting-option active" data-homepage="classroom">
 <strong>Google Classroom</strong>
-<p style="font-size:13px;opacity:0.8;margin-top:5px;">Classroom disguise</p>
+<p style="font-size:13px;opacity:0.8;margin-top:5px;">Classroom disguise (current)</p>
 </div>
+</div>
+<div style="background:rgba(255,255,255,0.1);padding:15px;border-radius:15px;margin-top:20px;">
+<p style="font-size:13px;opacity:0.9;">💡 <strong>Tip:</strong> Disguise mode changes the page title, favicon, and URL to help you browse privately. Press settings icon again to hide/show search interface.</p>
 </div>
 </div>
 </div>
 
 <script>
 let currentEngine=localStorage.getItem('searchEngine')||'duckduckgo';
-let proxyHomepage=localStorage.getItem('proxyHomepage')||'blank';
+let proxyHomepage=localStorage.getItem('proxyHomepage')||'classroom';
 let usePythonBackend=false;
 const CORS_PROXIES=['https://api.allorigins.win/raw?url=','https://corsproxy.io/?'];
 let currentProxyIndex=0;
+
+// Apply saved disguise on load
+applyDisguise(proxyHomepage);
 
 // Detect if Python backend is available
 async function detectBackend(){
@@ -189,9 +203,17 @@ return false;
 
 detectBackend();
 
-document.querySelector('.settings-btn').onclick=()=>document.getElementById('settingsModal').classList.add('active');
-document.querySelector('.settings-close').onclick=()=>document.getElementById('settingsModal').classList.remove('active');
+// Settings modal
+document.querySelector('.settings-btn').onclick=()=>{
+const modal=document.getElementById('settingsModal');
+modal.classList.toggle('active');
+};
 
+document.querySelector('.settings-close').onclick=()=>{
+document.getElementById('settingsModal').classList.remove('active');
+};
+
+// Engine selection
 document.querySelectorAll('.engine-btn').forEach(btn=>{
 btn.onclick=()=>{
 currentEngine=btn.dataset.engine;
@@ -201,18 +223,101 @@ btn.classList.add('active');
 };
 });
 
+// Homepage disguise selection
 document.querySelectorAll('[data-homepage]').forEach(opt=>{
 opt.onclick=()=>{
 proxyHomepage=opt.dataset.homepage;
 localStorage.setItem('proxyHomepage',proxyHomepage);
 document.querySelectorAll('[data-homepage]').forEach(o=>o.classList.remove('active'));
 opt.classList.add('active');
+applyDisguise(proxyHomepage);
+// Show confirmation
+const confirmation=document.createElement('div');
+confirmation.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(138,43,226,0.9);color:white;padding:15px 30px;border-radius:20px;z-index:99999;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,0.5);';
+confirmation.textContent=`✓ Disguise changed to ${proxyHomepage === 'blank' ? 'Blank Page' : proxyHomepage === 'google' ? 'Google' : 'Google Classroom'}`;
+document.body.appendChild(confirmation);
+setTimeout(()=>confirmation.remove(),2000);
 };
 });
 
-document.querySelector('.search-icon').onclick=performSearch;
-document.getElementById('mainSearch').onkeypress=e=>{if(e.key==='Enter')performSearch();};
-document.getElementById('addressBar').onkeypress=e=>{if(e.key==='Enter')searchOrNavigate();};
+function applyDisguise(type){
+const pageTitle=document.getElementById('pageTitle');
+const favicon=document.getElementById('favicon');
+const addressBar=document.getElementById('addressBar');
+const newTabPage=document.querySelector('.new-tab-page');
+const googleFrame=document.getElementById('googleFrame');
+const classroomFrame=document.getElementById('classroomFrame');
+
+// Hide all disguise frames
+googleFrame.classList.remove('active');
+classroomFrame.classList.remove('active');
+
+switch(type){
+case 'blank':
+pageTitle.textContent='';
+favicon.href='data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+addressBar.value='about:blank';
+newTabPage.style.display='flex';
+// Update URL (visual only)
+if(window.history&&window.history.pushState){
+window.history.pushState(null,'','about:blank');
+}
+break;
+
+case 'google':
+pageTitle.textContent='Google';
+favicon.href='https://www.google.com/favicon.ico';
+addressBar.value='https://www.google.com';
+newTabPage.style.display='none';
+googleFrame.classList.add('active');
+if(window.history&&window.history.pushState){
+window.history.pushState(null,'Google','https://www.google.com');
+}
+break;
+
+case 'classroom':
+pageTitle.textContent='Google Classroom';
+favicon.href='https://ssl.gstatic.com/classroom/favicon.png';
+addressBar.value='https://classroom.google.com';
+newTabPage.style.display='none';
+classroomFrame.classList.add('active');
+if(window.history&&window.history.pushState){
+window.history.pushState(null,'Google Classroom','https://classroom.google.com');
+}
+break;
+}
+
+// Update active state in settings
+document.querySelectorAll('[data-homepage]').forEach(opt=>{
+opt.classList.toggle('active',opt.dataset.homepage===type);
+});
+}
+
+// When user searches, temporarily show search interface
+function showSearchInterface(){
+document.querySelector('.new-tab-page').style.display='flex';
+document.getElementById('googleFrame').classList.remove('active');
+document.getElementById('classroomFrame').classList.remove('active');
+}
+
+document.querySelector('.search-icon').onclick=()=>{
+showSearchInterface();
+performSearch();
+};
+
+document.getElementById('mainSearch').onkeypress=e=>{
+if(e.key==='Enter'){
+showSearchInterface();
+performSearch();
+}
+};
+
+document.getElementById('addressBar').onkeypress=e=>{
+if(e.key==='Enter'){
+showSearchInterface();
+searchOrNavigate();
+}
+};
 
 async function performSearch(){
 const query=document.getElementById('mainSearch').value.trim();
@@ -221,8 +326,7 @@ if(!query)return;
 const view=document.getElementById('view-home');
 
 if(usePythonBackend){
-// Use Python backend
-view.innerHTML='<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">🐍 Python Backend Searching...</div></div>';
+view.innerHTML='<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">🐍 Searching 100 results...</div></div>';
 try{
 const response=await fetch(`/api/search?q=${encodeURIComponent(query)}&engine=${currentEngine}`);
 const data=await response.json();
@@ -238,7 +342,6 @@ usePythonBackend=false;
 setTimeout(()=>performSearch(),2000);
 }
 }else{
-// Use CORS proxy fallback
 view.innerHTML='<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">🌐 CORS Proxy Searching...</div></div>';
 try{
 let searchUrl='';
@@ -269,24 +372,16 @@ function displayResults(results,query){
 let instantAnswerHtml='';
 let regularResults=results;
 
-// Check for instant answer
 const instantAnswer=results.find(r=>r.is_instant);
 if(instantAnswer){
 regularResults=results.filter(r=>!r.is_instant);
-instantAnswerHtml=`
-<div style="background:linear-gradient(135deg,#8a2be2,#9300ea);border-radius:25px;padding:30px;margin-bottom:30px;border:2px solid rgba(255,255,255,0.3);box-shadow:0 10px 40px rgba(138,43,226,0.4);">
+instantAnswerHtml=`<div style="background:linear-gradient(135deg,#8a2be2,#9300ea);border-radius:25px;padding:30px;margin-bottom:30px;border:2px solid rgba(255,255,255,0.3);box-shadow:0 10px 40px rgba(138,43,226,0.4);">
 <div style="display:flex;align-items:center;gap:15px;margin-bottom:15px;">
 <div style="font-size:42px;">🤖</div>
-<div>
-<div style="font-size:20px;font-weight:700;">${escapeHtml(instantAnswer.title)}</div>
-<div style="font-size:13px;opacity:0.9;">${escapeHtml(instantAnswer.display_url)}</div>
-</div>
-</div>
-<div style="font-size:16px;line-height:1.8;background:rgba(255,255,255,0.15);padding:20px;border-radius:15px;">
-${escapeHtml(instantAnswer.snippet)}
-</div>
-${instantAnswer.url&&instantAnswer.url!=='#'?`<a href="${instantAnswer.url}" target="_blank" style="display:inline-block;margin-top:15px;color:white;text-decoration:none;font-size:14px;opacity:0.9;">Learn more →</a>`:''}
-</div>`;
+<div><div style="font-size:20px;font-weight:700;">${escapeHtml(instantAnswer.title)}</div>
+<div style="font-size:13px;opacity:0.9;">${escapeHtml(instantAnswer.display_url)}</div></div></div>
+<div style="font-size:16px;line-height:1.8;background:rgba(255,255,255,0.15);padding:20px;border-radius:15px;">${escapeHtml(instantAnswer.snippet)}</div>
+${instantAnswer.url&&instantAnswer.url!=='#'?`<a href="${instantAnswer.url}" target="_blank" style="display:inline-block;margin-top:15px;color:white;text-decoration:none;font-size:14px;opacity:0.9;">Learn more →</a>`:''}</div>`;
 }
 
 const resultsHtml=regularResults.map(r=>`<div class="result-item" onclick="openProxy('${r.url.replace(/'/g,"\\'")}')">
@@ -299,10 +394,7 @@ document.getElementById('view-home').innerHTML=`<div class="search-results-conta
 <div class="results-header">
 <button class="back-btn" onclick="location.reload()">← New Search</button>
 <span style="color:rgba(255,255,255,0.8);margin-left:20px;">${regularResults.length} results • ${currentEngine}</span>
-</div>
-${instantAnswerHtml}
-${resultsHtml}
-</div>`;
+</div>${instantAnswerHtml}${resultsHtml}</div>`;
 }
 
 function parseSearchResults(html,engine){
@@ -332,6 +424,7 @@ return results.slice(0,20);
 function searchOrNavigate(){
 const input=document.getElementById('addressBar').value.trim();
 if(!input)return;
+showSearchInterface();
 if(input.match(/^https?:\/\//i)||input.match(/^[^\s]+\.[^\s]+$/)){
 openProxy(input.startsWith('http')?input:'https://'+input);
 }else{
@@ -341,34 +434,20 @@ performSearch();
 }
 
 function openProxy(url){
-// Special handling for ChatGPT - show embedded option
 if(url.toLowerCase().includes('chatgpt.com')||url.toLowerCase().includes('chat.openai.com')){
 const view=document.getElementById('view-home');
 view.innerHTML=`<div style="padding:40px 20px;text-align:center;overflow-y:auto;height:100%;">
 <div style="font-size:82px;margin-bottom:20px;">🤖</div>
 <h1 style="font-size:32px;margin-bottom:20px;">ChatGPT Access</h1>
-<p style="font-size:18px;opacity:0.9;margin-bottom:30px;max-width:600px;margin-left:auto;margin-right:auto;">
-ChatGPT works best when accessed directly. Choose your preferred method:
-</p>
+<p style="font-size:18px;opacity:0.9;margin-bottom:30px;max-width:600px;margin-left:auto;margin-right:auto;">ChatGPT works best when accessed directly. Choose your preferred method:</p>
 <div style="display:flex;gap:15px;justify-content:center;flex-wrap:wrap;margin-bottom:30px;">
 <button onclick="window.open('https://chat.openai.com','_blank')" style="background:linear-gradient(135deg,#8a2be2,#9300ea);color:white;border:none;padding:18px 35px;border-radius:25px;font-weight:600;font-size:17px;cursor:pointer;box-shadow:0 5px 20px rgba(138,43,226,0.4);">🌐 Open ChatGPT</button>
 <button onclick="tryEmbedChatGPT()" style="background:rgba(255,255,255,0.2);color:white;border:none;padding:18px 35px;border-radius:25px;font-weight:600;font-size:17px;cursor:pointer;">📱 Try Embed</button>
 <button onclick="location.reload()" style="background:rgba(255,255,255,0.1);color:white;border:none;padding:18px 35px;border-radius:25px;font-weight:600;font-size:17px;cursor:pointer;">← Back</button>
-</div>
-<div style="background:rgba(138,43,226,0.2);padding:25px;border-radius:20px;max-width:600px;margin:0 auto;text-align:left;">
-<p style="font-size:14px;margin-bottom:12px;"><strong>💡 Why ChatGPT needs special access:</strong></p>
-<ul style="font-size:13px;opacity:0.9;line-height:1.9;padding-left:20px;">
-<li>Real-time AI responses via WebSocket</li>
-<li>Authentication & session cookies</li>
-<li>Direct API connections to OpenAI</li>
-<li>Stream processing for text generation</li>
-</ul>
-</div>
-</div>`;
+</div></div>`;
 return;
 }
 
-// Other complex sites
 const complexSites=['perplexity.ai','poki.com','youtube.com','netflix.com','discord.com','spotify.com','twitch.tv','roblox.com'];
 const isComplex=complexSites.some(site=>url.toLowerCase().includes(site));
 if(isComplex){
@@ -376,61 +455,6 @@ const view=document.getElementById('view-home');
 view.innerHTML=`<div style="padding:60px 20px;text-align:center;overflow-y:auto;height:100%;">
 <div style="font-size:92px;margin-bottom:20px;">⚠️</div>
 <h1 style="font-size:32px;margin-bottom:20px;">Complex Site Detected</h1>
-<p style="font-size:18px;opacity:0.9;margin-bottom:30px;max-width:600px;margin-left:auto;margin-right:auto;">
-This site uses advanced features that won't work properly in a proxy.
-</p>
+<p style="font-size:18px;opacity:0.9;margin-bottom:30px;max-width:600px;margin-left:auto;margin-right:auto;">This site uses advanced features that won't work properly in a proxy.</p>
 <div style="background:rgba(255,255,255,0.1);padding:20px;border-radius:20px;margin:30px auto;max-width:500px;">
-<p style="font-size:14px;opacity:0.8;margin-bottom:10px;">Site:</p>
-<p style="font-family:monospace;font-size:14px;color:#a78bfa;word-break:break-all;">${url}</p>
-</div>
-<div style="display:flex;gap:15px;justify-content:center;flex-wrap:wrap;margin-top:30px;">
-<button onclick="window.open('${url}','_blank')" style="background:linear-gradient(135deg,#8a2be2,#9300ea);color:white;border:none;padding:15px 30px;border-radius:25px;font-weight:600;font-size:16px;cursor:pointer;">🌐 Visit Real Site</button>
-<button onclick="tryProxyAnyway('${url}')" style="background:rgba(255,255,255,0.2);color:white;border:none;padding:15px 30px;border-radius:25px;font-weight:600;font-size:16px;cursor:pointer;">Try Proxy Anyway</button>
-<button onclick="location.reload()" style="background:rgba(255,255,255,0.1);color:white;border:none;padding:15px 30px;border-radius:25px;font-weight:600;font-size:16px;cursor:pointer;">← Back</button>
-</div></div>`;
-return;
-}
-
-// Regular proxy for simple sites
-const view=document.getElementById('view-home');
-if(usePythonBackend){
-const encoded=btoa(url);
-view.innerHTML=`<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">Loading...</div></div><iframe class="proxy-frame" src="/api/proxy?url=${encoded}" onload="this.previousElementSibling.remove()"></iframe>`;
-}else{
-const proxyUrl=CORS_PROXIES[currentProxyIndex]+encodeURIComponent(url);
-view.innerHTML=`<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">Loading...</div></div><iframe class="proxy-frame" src="${proxyUrl}" onload="this.previousElementSibling.remove()"></iframe>`;
-}
-}
-
-function tryEmbedChatGPT(){
-if(usePythonBackend){
-const encoded=btoa('https://chat.openai.com');
-document.getElementById('view-home').innerHTML=`<iframe class="proxy-frame" src="/api/proxy?url=${encoded}"></iframe>`;
-}else{
-document.getElementById('view-home').innerHTML=`<iframe class="proxy-frame" src="https://chat.openai.com" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>`;
-}
-}
-
-function tryProxyAnyway(url){
-const view=document.getElementById('view-home');
-if(usePythonBackend){
-const encoded=btoa(url);
-view.innerHTML=`<iframe class="proxy-frame" src="/api/proxy?url=${encoded}"></iframe>`;
-}else{
-view.innerHTML=`<iframe class="proxy-frame" src="${CORS_PROXIES[currentProxyIndex]+encodeURIComponent(url)}"></iframe>`;
-}
-}
-
-function escapeHtml(text){
-const div=document.createElement('div');
-div.textContent=text;
-return div.innerHTML;
-}
-
-document.querySelectorAll('.engine-btn').forEach(btn=>{
-if(btn.dataset.engine===currentEngine)btn.classList.add('active');
-else btn.classList.remove('active');
-});
-</script>
-</body>
-</html>
+<p style="font-size:
