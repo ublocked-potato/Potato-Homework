@@ -1,0 +1,34 @@
+{
+  "name": "omnisearch-hybrid",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "Hybrid search engine: Rust hot paths + Python parsing + Node.js orchestration",
+  "main": "server.js",
+  "engines": {
+    "node": ">=24.13.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "rust": "cd rust && cargo run --release",
+    "python": "python3.14 parser.py",
+    "all": "concurrently \"npm run rust\" \"npm run python\" \"npm run dev\"",
+    "build:rust": "cd rust && cargo build --release",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "keywords": [
+    "search",
+    "proxy",
+    "rust",
+    "node",
+    "python",
+    "hybrid"
+  ]
+}
