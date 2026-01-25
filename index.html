@@ -7,454 +7,755 @@
 <link rel="icon" id="favicon" href="https://ssl.gstatic.com/classroom/favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<script>
+// Register Shadow DOM Service Worker for stealth mode
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/shadow-worker.js')
+      .then(reg => console.log('🥷 Shadow Worker registered:', reg.scope))
+      .catch(err => console.warn('Shadow Worker registration failed:', err));
+  });
+}
+</script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a0033 0%,#2d1b69 25%,#4a0e6a 50%,#2d1b69 75%,#1a0033 100%);color:white;min-height:100vh;overflow:hidden;}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #1a0033 0%, #2d1b69 25%, #4a0e6a 50%, #2d1b69 75%, #1a0033 100%);
+  color: white;
+  min-height: 100vh;
+  overflow: hidden;
+}
 
-.browser{position:relative;width:100vw;height:100vh;display:flex;flex-direction:column;}
-.browser-header{height:50px;background:rgba(0,0,0,0.3);backdrop-filter:blur(20px);display:flex;align-items:center;padding:0 20px;justify-content:space-between;flex-shrink:0;}
-.tabs{display:flex;align-items:center;gap:5px;flex:1;overflow-x:auto;}
-.tab{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.1);border-radius:20px;font-size:14px;cursor:pointer;white-space:nowrap;}
-.tab.active{background:rgba(255,255,255,0.2);}
-.add-tab-btn{width:40px;height:40px;background:rgba(255,255,255,0.3);border:none;border-radius:10px;color:white;font-size:20px;cursor:pointer;}
+.browser {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
 
-.toolbar{height:70px;background:rgba(0,0,0,0.4);backdrop-filter:blur(20px);display:flex;align-items:center;padding:0 20px;gap:15px;flex-shrink:0;}
-.nav-btn,.settings-btn{width:40px;height:40px;background:rgba(255,255,255,0.2);border:none;border-radius:10px;color:white;font-size:16px;cursor:pointer;transition:all 0.3s;}
-.nav-btn:hover,.settings-btn:hover{background:rgba(255,255,255,0.3);transform:scale(1.05);}
-.address-bar-container{flex:1;max-width:600px;position:relative;}
-.address-bar-input{width:100%;height:45px;padding:0 120px 0 20px;border:2px solid rgba(255,255,255,0.3);border-radius:25px;background:rgba(255,255,255,0.1);color:white;font-size:16px;}
-.engine-selector{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;gap:5px;}
-.engine-btn{padding:6px 12px;background:rgba(255,255,255,0.15);border:none;border-radius:15px;color:rgba(255,255,255,0.7);font-size:11px;cursor:pointer;font-weight:600;}
-.engine-btn.active{background:linear-gradient(135deg,#8a2be2,#9300ea);color:white;}
+.browser-header {
+  height: 50px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  justify-content: space-between;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
 
-.browser-content{flex:1;overflow:hidden;position:relative;}
-.content-view{display:none;width:100%;height:100%;position:absolute;top:0;left:0;}
-.content-view.active{display:block;}
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+  overflow-x: auto;
+}
 
-.new-tab-page{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center;overflow-y:auto;height:100%;}
-.search-container{position:relative;width:100%;max-width:600px;margin:40px 0;}
-.main-search-input{width:100%;height:65px;padding:0 70px 0 25px;border:2px solid rgba(255,255,255,0.4);border-radius:35px;background:rgba(255,255,255,0.15);color:white;font-size:18px;font-weight:500;}
-.search-icon{position:absolute;right:15px;top:50%;transform:translateY(-50%);width:45px;height:45px;background:linear-gradient(135deg,#8a2be2,#9300ea);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.3s;
+}
 
-.reviews-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;max-width:900px;margin:40px 0;}
-.review-card{background:rgba(255,255,255,0.1);border-radius:20px;padding:25px;border:1px solid rgba(255,255,255,0.2);transition:all 0.3s;}
-.review-card:hover{transform:translateY(-5px);}
+.tab:hover { background: rgba(255, 255, 255, 0.15); }
+.tab.active { background: rgba(255, 255, 255, 0.2); }
 
-.search-results-container{padding:40px 20px 100px;overflow-y:auto;height:100%;}
-.results-header{background:rgba(0,0,0,0.5);padding:15px;border-radius:15px;margin-bottom:30px;}
-.back-btn{background:linear-gradient(135deg,#8a2be2,#9300ea);color:white;border:none;padding:10px 20px;border-radius:20px;cursor:pointer;}
-.result-item{background:rgba(255,255,255,0.1);border-radius:20px;padding:25px;margin:25px 0;cursor:pointer;transition:all 0.3s;}
-.result-item:hover{background:rgba(255,255,255,0.15);}
-.result-title{font-size:18px;font-weight:600;color:#a78bfa;margin-bottom:8px;}
-.result-url{color:rgba(255,255,255,0.8);font-family:monospace;font-size:14px;margin-bottom:12px;}
+.add-tab-btn {
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
 
-.proxy-frame{width:100%;height:100%;border:none;}
-.loading-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;}
-.loading-spinner{width:60px;height:60px;border:4px solid rgba(255,255,255,0.3);border-top:4px solid #8a2be2;border-radius:50%;animation:spin 1s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
+.add-tab-btn:hover { background: rgba(255, 255, 255, 0.4); transform: scale(1.05); }
 
-.settings-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:10000;align-items:center;justify-content:center;}
-.settings-modal.active{display:flex;}
-.settings-content{background:linear-gradient(135deg,#2d1b69,#4a0e6a);border-radius:30px;padding:40px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;}
-.settings-header{display:flex;justify-content:space-between;margin-bottom:30px;}
-.settings-close{background:none;border:none;color:white;font-size:32px;cursor:pointer;}
-.setting-group{margin-bottom:30px;}
-.setting-group h3{margin-bottom:15px;color:#a78bfa;}
-.setting-option{background:rgba(255,255,255,0.1);padding:15px;border-radius:15px;margin-bottom:10px;cursor:pointer;transition:all 0.3s;}
-.setting-option:hover{background:rgba(255,255,255,0.15);}
-.setting-option.active{background:rgba(138,43,226,0.3);border:2px solid #8a2be2;}
-.powered-by{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.4);padding:12px 25px;border-radius:30px;z-index:1000;}
-.mode-badge{position:fixed;top:130px;right:20px;background:rgba(138,43,226,0.3);padding:8px 16px;border-radius:20px;font-size:12px;z-index:1000;}
+.toolbar {
+  height: 70px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 15px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
 
-/* Disguise frames */
-.disguise-frame{width:100%;height:100%;border:none;display:none;}
-.disguise-frame.active{display:block;}
+.nav-btn, .settings-btn {
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.nav-btn:hover, .settings-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.address-bar-container {
+  flex: 1;
+  max-width: 600px;
+  position: relative;
+}
+
+.address-bar-input {
+  width: 100%;
+  height: 45px;
+  padding: 0 120px 0 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 25px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 16px;
+  transition: all 0.3s;
+}
+
+.address-bar-input:focus {
+  outline: none;
+  border-color: #8a2be2;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.address-bar-input::placeholder { color: rgba(255, 255, 255, 0.6); }
+
+.engine-selector {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 5px;
+}
+
+.engine-btn {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: 15px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.engine-btn:hover { background: rgba(255, 255, 255, 0.25); }
+.engine-btn.active {
+  background: linear-gradient(135deg, #8a2be2, #9300ea);
+  color: white;
+}
+
+.browser-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.content-view {
+  display: none;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.content-view.active { display: block; }
+
+.new-tab-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.search-container {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  margin: 40px 0;
+}
+
+.main-search-input {
+  width: 100%;
+  height: 65px;
+  padding: 0 70px 0 25px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 35px;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-size: 18px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.main-search-input:focus {
+  outline: none;
+  border-color: #8a2be2;
+  box-shadow: 0 0 20px rgba(138, 43, 226, 0.3);
+}
+
+.main-search-input::placeholder { color: rgba(255, 255, 255, 0.7); }
+
+.search-icon {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 45px;
+  height: 45px;
+  background: linear-gradient(135deg, #8a2be2, #9300ea);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  transition: all 0.3s;
+}
+
+.search-icon:hover {
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 5px 20px rgba(138, 43, 226, 0.5);
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  max-width: 900px;
+  margin: 40px 0;
+  width: 100%;
+}
+
+.feature-card {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 30px rgba(138, 43, 226, 0.3);
+}
+
+.search-results-container {
+  padding: 40px 20px 100px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.results-header {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 15px 20px;
+  border-radius: 15px;
+  margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.back-btn {
+  background: linear-gradient(135deg, #8a2be2, #9300ea);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.back-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(138, 43, 226, 0.4);
+}
+
+.result-item {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 25px;
+  margin: 25px 0;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.result-item:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateX(5px);
+  border-color: #8a2be2;
+}
+
+.result-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #a78bfa;
+  margin-bottom: 8px;
+}
+
+.result-url {
+  color: rgba(255, 255, 255, 0.8);
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  margin-bottom: 12px;
+  opacity: 0.9;
+}
+
+.result-snippet {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.result-score {
+  display: inline-block;
+  background: rgba(138, 43, 226, 0.3);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.proxy-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: white;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid #8a2be2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.settings-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-modal.active { display: flex; }
+
+.settings-content {
+  background: linear-gradient(135deg, #2d1b69, #4a0e6a);
+  border-radius: 30px;
+  padding: 40px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.settings-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 32px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.settings-close:hover {
+  transform: scale(1.2);
+  color: #ff6b6b;
+}
+
+.setting-group {
+  margin-bottom: 30px;
+}
+
+.setting-group h3 {
+  margin-bottom: 15px;
+  color: #a78bfa;
+  font-size: 18px;
+}
+
+.setting-option {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 15px;
+  border-radius: 15px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 2px solid transparent;
+}
+
+.setting-option:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateX(5px);
+}
+
+.setting-option.active {
+  background: rgba(138, 43, 226, 0.3);
+  border-color: #8a2be2;
+}
+
+.toggle-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  margin-bottom: 10px;
+}
+
+.switch {
+  position: relative;
+  width: 50px;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 13px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.switch.active { background: #8a2be2; }
+
+.switch-slider {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.switch.active .switch-slider { transform: translateX(24px); }
+
+.mode-badge {
+  position: fixed;
+  top: 130px;
+  right: 20px;
+  background: rgba(138, 43, 226, 0.3);
+  backdrop-filter: blur(10px);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  z-index: 1000;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-weight: 600;
+}
+
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(138, 43, 226, 0.95);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 15px;
+  z-index: 99999;
+  font-weight: 600;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  max-width: 350px;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.disguise-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: none;
+}
+
+.disguise-frame.active { display: block; }
+
+.shortcuts-help {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  padding: 12px 25px;
+  border-radius: 30px;
+  font-size: 13px;
+  z-index: 1000;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 768px) {
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .toolbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px;
+  }
+  
+  .address-bar-container {
+    order: 3;
+    width: 100%;
+    margin-top: 10px;
+  }
+}
 </style>
 </head>
 <body>
 <div class="browser">
-<div class="browser-header">
-<div class="tabs" id="tabsContainer">
-<div class="tab active" data-tab-id="home">
-<span style="font-size:20px;">🥔</span>
-<span class="tab-title">OmniSearch</span>
-</div>
-</div>
-<button class="add-tab-btn">+</button>
+  <div class="browser-header">
+    <div class="tabs" id="tabsContainer">
+      <div class="tab active" data-tab-id="home">
+        <span style="font-size:20px;">🥔</span>
+        <span class="tab-title">OmniSearch</span>
+      </div>
+    </div>
+    <button class="add-tab-btn" title="New Tab">+</button>
+  </div>
+
+  <div class="toolbar">
+    <button class="nav-btn" id="backBtn" title="Back" disabled>
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <button class="nav-btn" id="forwardBtn" title="Forward" disabled>
+      <i class="fas fa-arrow-right"></i>
+    </button>
+    <button class="nav-btn" id="refreshBtn" title="Refresh">
+      <i class="fas fa-redo"></i>
+    </button>
+    <button class="settings-btn" id="settingsBtn" title="Settings">
+      <i class="fas fa-cog"></i>
+    </button>
+    <div class="address-bar-container">
+      <input type="text" class="address-bar-input" id="addressBar" 
+             placeholder="Search or enter URL..." autocomplete="off">
+      <div class="engine-selector">
+        <button class="engine-btn active" data-engine="duckduckgo" title="DuckDuckGo">DDG</button>
+        <button class="engine-btn" data-engine="google" title="Google">Google</button>
+        <button class="engine-btn" data-engine="brave" title="Brave">Brave</button>
+        <button class="engine-btn" data-engine="startpage" title="Startpage">Start</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="browser-content" id="browserContent">
+    <div class="content-view active" id="view-home">
+      <div class="new-tab-page">
+        <div style="font-size:120px;margin-bottom:20px;">🥔</div>
+        <h1 style="font-size:36px;font-weight:700;margin-bottom:10px;">OmniSearch</h1>
+        <p style="opacity:0.9;font-size:18px;margin-bottom:20px;" id="modeText">
+          Detecting backend mode...
+        </p>
+
+        <div class="search-container">
+          <input type="text" class="main-search-input" id="mainSearch" 
+                 placeholder="🔍 Search the web..." autocomplete="off">
+          <div class="search-icon" title="Search">🔍</div>
+        </div>
+
+        <div class="features-grid">
+          <div class="feature-card" title="CTRL+SHIFT+S to toggle">
+            <div style="font-size:24px;margin-bottom:15px;">🥷</div>
+            <p><strong>Stealth Mode</strong></p>
+            <p style="font-size:14px;opacity:0.8;margin-top:8px;">
+              Text scrambling + Shadow DOM
+            </p>
+          </div>
+          <div class="feature-card" title="CTRL+G for instant disguise">
+            <div style="font-size:24px;margin-bottom:15px;">⌨️</div>
+            <p><strong>CTRL+G Shortcut</strong></p>
+            <p style="font-size:14px;opacity:0.8;margin-top:8px;">
+              Instant Classroom disguise
+            </p>
+          </div>
+          <div class="feature-card">
+            <div style="font-size:24px;margin-bottom:15px;">🔄</div>
+            <p><strong>Auto-Mirrors</strong></p>
+            <p style="font-size:14px;opacity:0.8;margin-top:8px;">
+              Burned domains auto-redirect
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Disguise iframes for stealth mode -->
+      <iframe class="disguise-frame" id="googleFrame" 
+              src="https://www.google.com" loading="lazy"></iframe>
+      <iframe class="disguise-frame" id="classroomFrame" 
+              src="https://classroom.google.com" loading="lazy"></iframe>
+    </div>
+  </div>
 </div>
 
-<div class="toolbar">
-<button class="nav-btn"><i class="fas fa-arrow-left"></i></button>
-<button class="nav-btn"><i class="fas fa-arrow-right"></i></button>
-<button class="nav-btn"><i class="fas fa-redo"></i></button>
-<button class="settings-btn"><i class="fas fa-cog"></i></button>
-<div class="address-bar-container">
-<input type="text" class="address-bar-input" id="addressBar" placeholder="Search or enter URL">
-<div class="engine-selector">
-<button class="engine-btn active" data-engine="duckduckgo">DDG</button>
-<button class="engine-btn" data-engine="google">Google</button>
-<button class="engine-btn" data-engine="brave">Brave</button>
-<button class="engine-btn" data-engine="startpage">Start</button>
-</div>
-</div>
+<div class="mode-badge" id="modeBadge" style="display:none;">
+  🔍 Detecting...
 </div>
 
-<div class="browser-content" id="browserContent">
-<div class="content-view active" id="view-home">
-<div class="new-tab-page">
-<div style="font-size:120px;margin-bottom:20px;">🥔</div>
-<h1 style="font-size:36px;font-weight:700;margin-bottom:10px;">OmniSearch</h1>
-<p style="opacity:0.9;font-size:18px;margin-bottom:20px;" id="modeText">Auto-Detecting Mode... 🥔</p>
-
-<div class="search-container">
-<input type="text" class="main-search-input" id="mainSearch" placeholder="🔍 Search the web...">
-<div class="search-icon">🔍</div>
+<div class="shortcuts-help" id="shortcutsHelp">
+  <strong>Shortcuts:</strong> CTRL+G (Disguise) | CTRL+SHIFT+S (Stealth) | CTRL+SHIFT+R (Report Block)
 </div>
-
-<div class="reviews-grid">
-<div class="review-card">
-<div style="font-size:24px;margin-bottom:15px;">🔄</div>
-<p><strong>Hybrid Mode</strong></p>
-<p style="font-size:14px;opacity:0.8;margin-top:8px;">Auto-switches Python ↔ CORS</p>
-</div>
-<div class="review-card">
-<div style="font-size:24px;margin-bottom:15px;">🛡️</div>
-<p><strong>Smart Detection</strong></p>
-<p style="font-size:14px;opacity:0.8;margin-top:8px;">Warns about complex sites</p>
-</div>
-<div class="review-card">
-<div style="font-size:24px;margin-bottom:15px;">🌐</div>
-<p><strong>Visit Real Site</strong></p>
-<p style="font-size:14px;opacity:0.8;margin-top:8px;">One-click to real sites</p>
-</div>
-</div>
-</div>
-
-<!-- Disguise iframes -->
-<iframe class="disguise-frame" id="googleFrame" src="https://www.google.com"></iframe>
-<iframe class="disguise-frame" id="classroomFrame" src="https://classroom.google.com"></iframe>
-</div>
-</div>
-</div>
-
-<div class="powered-by" id="modeBadge">🥔 Detecting Mode...</div>
-<div class="mode-badge" id="topModeBadge" style="display:none;"></div>
 
 <div class="settings-modal" id="settingsModal">
-<div class="settings-content">
-<div class="settings-header">
-<h2>⚙️ Settings</h2>
-<button class="settings-close">×</button>
+  <div class="settings-content">
+    <div class="settings-header">
+      <h2>⚙️ Settings</h2>
+      <button class="settings-close" id="closeSettings" title="Close">×</button>
+    </div>
+    
+    <div class="setting-group">
+      <h3>🏠 Proxy Homepage</h3>
+      <div class="setting-option" data-homepage="blank">
+        <strong>Blank Page</strong>
+        <p style="font-size:13px;opacity:0.8;margin-top:5px;">
+          Maximum stealth • URL shows "about:blank"
+        </p>
+      </div>
+      <div class="setting-option" data-homepage="google">
+        <strong>Google</strong>
+        <p style="font-size:13px;opacity:0.8;margin-top:5px;">
+          Disguise as Google homepage
+        </p>
+      </div>
+      <div class="setting-option active" data-homepage="classroom">
+        <strong>Google Classroom</strong>
+        <p style="font-size:13px;opacity:0.8;margin-top:5px;">
+          Classroom disguise (default)
+        </p>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <h3>🛡️ Security Features</h3>
+      <div class="toggle-switch" id="stealthToggle">
+        <div>
+          <strong>Stealth Mode</strong>
+          <p style="font-size:13px;opacity:0.8;margin-top:5px;">
+            Text scrambling + Shadow DOM protection
+          </p>
+        </div>
+        <div class="switch" data-setting="stealth">
+          <div class="switch-slider"></div>
+        </div>
+      </div>
+      <div class="toggle-switch" id="autoMirrorToggle">
+        <div>
+          <strong>Auto-Mirror</strong>
+          <p style="font-size:13px;opacity:0.8;margin-top:5px;">
+            Automatically deploy mirrors for burned domains
+          </p>
+        </div>
+        <div class="switch active" data-setting="autoMirror">
+          <div class="switch-slider"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <h3>📊 Statistics</h3>
+      <div style="background:rgba(255,255,255,0.1);padding:15px;border-radius:15px;">
+        <p style="font-size:14px;margin-bottom:8px;">
+          <strong>Searches performed:</strong> <span id="searchCount">0</span>
+        </p>
+        <p style="font-size:14px;margin-bottom:8px;">
+          <strong>Domains burned:</strong> <span id="burnedCount">0</span>
+        </p>
+        <p style="font-size:14px;">
+          <strong>Active backend:</strong> <span id="activeBackend">Detecting...</span>
+        </p>
+      </div>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.1);padding:15px;border-radius:15px;margin-top:20px;">
+      <p style="font-size:13px;opacity:0.9;">
+        💡 <strong>Tip:</strong> Use keyboard shortcuts for quick access. 
+        Press CTRL+SHIFT+H to toggle this shortcuts bar.
+      </p>
+    </div>
+  </div>
 </div>
-<div class="setting-group">
-<h3>🏠 Proxy Homepage</h3>
-<div class="setting-option" data-homepage="blank">
-<strong>Blank Page</strong>
-<p style="font-size:13px;opacity:0.8;margin-top:5px;">Maximum stealth • URL shows "about:blank"</p>
-</div>
-<div class="setting-option" data-homepage="google">
-<strong>Google</strong>
-<p style="font-size:13px;opacity:0.8;margin-top:5px;">Disguise as Google homepage</p>
-</div>
-<div class="setting-option active" data-homepage="classroom">
-<strong>Google Classroom</strong>
-<p style="font-size:13px;opacity:0.8;margin-top:5px;">Classroom disguise (current)</p>
-</div>
-</div>
-<div style="background:rgba(255,255,255,0.1);padding:15px;border-radius:15px;margin-top:20px;">
-<p style="font-size:13px;opacity:0.9;">💡 <strong>Tip:</strong> Disguise mode changes the page title, favicon, and URL to help you browse privately. Press settings icon again to hide/show search interface.</p>
-</div>
-</div>
-</div>
 
-<script>
-let currentEngine=localStorage.getItem('searchEngine')||'duckduckgo';
-let proxyHomepage=localStorage.getItem('proxyHomepage')||'classroom';
-let usePythonBackend=false;
-const CORS_PROXIES=['https://api.allorigins.win/raw?url=','https://corsproxy.io/?'];
-let currentProxyIndex=0;
-
-// Apply saved disguise on load
-applyDisguise(proxyHomepage);
-
-// Detect if Python backend is available
-async function detectBackend(){
-try{
-const response=await fetch('/api/search?q=test&engine=duckduckgo',{timeout:3000});
-if(response.ok){
-usePythonBackend=true;
-document.getElementById('modeText').textContent='Python Backend • Advanced Bypass 🐍';
-document.getElementById('modeBadge').textContent='🐍 Python Mode';
-document.getElementById('topModeBadge').textContent='🐍 Python';
-document.getElementById('topModeBadge').style.display='block';
-console.log('✅ Python backend detected');
-return true;
-}
-}catch(e){}
-
-usePythonBackend=false;
-document.getElementById('modeText').textContent='CORS Proxy Mode • Client-Side 🌐';
-document.getElementById('modeBadge').textContent='🌐 CORS Mode';
-document.getElementById('topModeBadge').textContent='🌐 CORS';
-document.getElementById('topModeBadge').style.display='block';
-console.log('⚠️ Python backend not available, using CORS proxy');
-return false;
-}
-
-detectBackend();
-
-// Settings modal
-document.querySelector('.settings-btn').onclick=()=>{
-const modal=document.getElementById('settingsModal');
-modal.classList.toggle('active');
-};
-
-document.querySelector('.settings-close').onclick=()=>{
-document.getElementById('settingsModal').classList.remove('active');
-};
-
-// Engine selection
-document.querySelectorAll('.engine-btn').forEach(btn=>{
-btn.onclick=()=>{
-currentEngine=btn.dataset.engine;
-localStorage.setItem('searchEngine',currentEngine);
-document.querySelectorAll('.engine-btn').forEach(b=>b.classList.remove('active'));
-btn.classList.add('active');
-};
-});
-
-// Homepage disguise selection
-document.querySelectorAll('[data-homepage]').forEach(opt=>{
-opt.onclick=()=>{
-proxyHomepage=opt.dataset.homepage;
-localStorage.setItem('proxyHomepage',proxyHomepage);
-document.querySelectorAll('[data-homepage]').forEach(o=>o.classList.remove('active'));
-opt.classList.add('active');
-applyDisguise(proxyHomepage);
-// Show confirmation
-const confirmation=document.createElement('div');
-confirmation.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(138,43,226,0.9);color:white;padding:15px 30px;border-radius:20px;z-index:99999;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,0.5);';
-confirmation.textContent=`✓ Disguise changed to ${proxyHomepage === 'blank' ? 'Blank Page' : proxyHomepage === 'google' ? 'Google' : 'Google Classroom'}`;
-document.body.appendChild(confirmation);
-setTimeout(()=>confirmation.remove(),2000);
-};
-});
-
-function applyDisguise(type){
-const pageTitle=document.getElementById('pageTitle');
-const favicon=document.getElementById('favicon');
-const addressBar=document.getElementById('addressBar');
-const newTabPage=document.querySelector('.new-tab-page');
-const googleFrame=document.getElementById('googleFrame');
-const classroomFrame=document.getElementById('classroomFrame');
-
-// Hide all disguise frames
-googleFrame.classList.remove('active');
-classroomFrame.classList.remove('active');
-
-switch(type){
-case 'blank':
-pageTitle.textContent='';
-favicon.href='data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-addressBar.value='about:blank';
-newTabPage.style.display='flex';
-// Update URL (visual only)
-if(window.history&&window.history.pushState){
-window.history.pushState(null,'','about:blank');
-}
-break;
-
-case 'google':
-pageTitle.textContent='Google';
-favicon.href='https://www.google.com/favicon.ico';
-addressBar.value='https://www.google.com';
-newTabPage.style.display='none';
-googleFrame.classList.add('active');
-if(window.history&&window.history.pushState){
-window.history.pushState(null,'Google','https://www.google.com');
-}
-break;
-
-case 'classroom':
-pageTitle.textContent='Google Classroom';
-favicon.href='https://ssl.gstatic.com/classroom/favicon.png';
-addressBar.value='https://classroom.google.com';
-newTabPage.style.display='none';
-classroomFrame.classList.add('active');
-if(window.history&&window.history.pushState){
-window.history.pushState(null,'Google Classroom','https://classroom.google.com');
-}
-break;
-}
-
-// Update active state in settings
-document.querySelectorAll('[data-homepage]').forEach(opt=>{
-opt.classList.toggle('active',opt.dataset.homepage===type);
-});
-}
-
-// When user searches, temporarily show search interface
-function showSearchInterface(){
-document.querySelector('.new-tab-page').style.display='flex';
-document.getElementById('googleFrame').classList.remove('active');
-document.getElementById('classroomFrame').classList.remove('active');
-}
-
-document.querySelector('.search-icon').onclick=()=>{
-showSearchInterface();
-performSearch();
-};
-
-document.getElementById('mainSearch').onkeypress=e=>{
-if(e.key==='Enter'){
-showSearchInterface();
-performSearch();
-}
-};
-
-document.getElementById('addressBar').onkeypress=e=>{
-if(e.key==='Enter'){
-showSearchInterface();
-searchOrNavigate();
-}
-};
-
-async function performSearch(){
-const query=document.getElementById('mainSearch').value.trim();
-if(!query)return;
-
-const view=document.getElementById('view-home');
-
-if(usePythonBackend){
-view.innerHTML='<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">🐍 Searching 100 results...</div></div>';
-try{
-const response=await fetch(`/api/search?q=${encodeURIComponent(query)}&engine=${currentEngine}`);
-const data=await response.json();
-if(!data.success||!data.results||data.results.length===0){
-view.innerHTML='<div style="padding:100px 20px;text-align:center;"><div style="font-size:72px;">🥔</div><h2>No Results</h2><button class="back-btn" onclick="location.reload()">← Try Again</button></div>';
-return;
-}
-displayResults(data.results,query);
-}catch(e){
-console.error('Python backend error:',e);
-view.innerHTML='<div style="padding:100px 20px;text-align:center;"><div style="font-size:72px;">🥔</div><h2>Backend Error</h2><p>Switching to CORS mode...</p></div>';
-usePythonBackend=false;
-setTimeout(()=>performSearch(),2000);
-}
-}else{
-view.innerHTML='<div class="loading-overlay"><div class="loading-spinner"></div><div style="margin-top:20px;">🌐 CORS Proxy Searching...</div></div>';
-try{
-let searchUrl='';
-switch(currentEngine){
-case 'duckduckgo':searchUrl=`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;break;
-case 'google':searchUrl=`https://www.google.com/search?q=${encodeURIComponent(query)}&num=20`;break;
-case 'brave':searchUrl=`https://search.brave.com/search?q=${encodeURIComponent(query)}`;break;
-case 'startpage':searchUrl=`https://www.startpage.com/sp/search?query=${encodeURIComponent(query)}`;break;
-}
-const proxyUrl=CORS_PROXIES[currentProxyIndex]+encodeURIComponent(searchUrl);
-const response=await fetch(proxyUrl);
-if(!response.ok)throw new Error('CORS proxy failed');
-const html=await response.text();
-const results=parseSearchResults(html,currentEngine);
-if(results.length===0){
-view.innerHTML='<div style="padding:100px 20px;text-align:center;"><div style="font-size:72px;">🥔</div><h2>No Results</h2><button class="back-btn" onclick="location.reload()">← Try Again</button></div>';
-return;
-}
-displayResults(results,query);
-}catch(e){
-console.error('CORS error:',e);
-view.innerHTML='<div style="padding:100px 20px;text-align:center;"><div style="font-size:72px;">🥔</div><h2>Search Error</h2><p>All methods failed. Try VPN.</p><button class="back-btn" onclick="location.reload()">← Back</button></div>';
-}
-}
-}
-
-function displayResults(results,query){
-let instantAnswerHtml='';
-let regularResults=results;
-
-const instantAnswer=results.find(r=>r.is_instant);
-if(instantAnswer){
-regularResults=results.filter(r=>!r.is_instant);
-instantAnswerHtml=`<div style="background:linear-gradient(135deg,#8a2be2,#9300ea);border-radius:25px;padding:30px;margin-bottom:30px;border:2px solid rgba(255,255,255,0.3);box-shadow:0 10px 40px rgba(138,43,226,0.4);">
-<div style="display:flex;align-items:center;gap:15px;margin-bottom:15px;">
-<div style="font-size:42px;">🤖</div>
-<div><div style="font-size:20px;font-weight:700;">${escapeHtml(instantAnswer.title)}</div>
-<div style="font-size:13px;opacity:0.9;">${escapeHtml(instantAnswer.display_url)}</div></div></div>
-<div style="font-size:16px;line-height:1.8;background:rgba(255,255,255,0.15);padding:20px;border-radius:15px;">${escapeHtml(instantAnswer.snippet)}</div>
-${instantAnswer.url&&instantAnswer.url!=='#'?`<a href="${instantAnswer.url}" target="_blank" style="display:inline-block;margin-top:15px;color:white;text-decoration:none;font-size:14px;opacity:0.9;">Learn more →</a>`:''}</div>`;
-}
-
-const resultsHtml=regularResults.map(r=>`<div class="result-item" onclick="openProxy('${r.url.replace(/'/g,"\\'")}')">
-<div class="result-title">${escapeHtml(r.title)}</div>
-<div class="result-url">${escapeHtml(r.display_url)}</div>
-<div class="result-snippet">${escapeHtml(r.snippet)}</div>
-</div>`).join('');
-
-document.getElementById('view-home').innerHTML=`<div class="search-results-container">
-<div class="results-header">
-<button class="back-btn" onclick="location.reload()">← New Search</button>
-<span style="color:rgba(255,255,255,0.8);margin-left:20px;">${regularResults.length} results • ${currentEngine}</span>
-</div>${instantAnswerHtml}${resultsHtml}</div>`;
-}
-
-function parseSearchResults(html,engine){
-const parser=new DOMParser();
-const doc=parser.parseFromString(html,'text/html');
-const results=[];
-if(engine==='duckduckgo'){
-doc.querySelectorAll('.result__body').forEach(item=>{
-const link=item.querySelector('.result__a');
-if(!link)return;
-let url=link.href;
-const match=url.match(/uddg=([^&]+)/);
-if(match)url=decodeURIComponent(match[1]);
-results.push({title:link.textContent.trim(),url:url,display_url:new URL(url).hostname.replace('www.',''),snippet:item.querySelector('.result__snippet')?.textContent.trim()||''});
-});
-}else if(engine==='google'){
-doc.querySelectorAll('.g,div[data-sokoban-container]').forEach(item=>{
-const link=item.querySelector('a');
-const h3=item.querySelector('h3');
-if(!link||!h3||link.href.includes('google.com/search'))return;
-results.push({title:h3.textContent.trim(),url:link.href,display_url:new URL(link.href).hostname.replace('www.',''),snippet:item.querySelector('.VwiC3b')?.textContent.trim()||''});
-});
-}
-return results.slice(0,20);
-}
-
-function searchOrNavigate(){
-const input=document.getElementById('addressBar').value.trim();
-if(!input)return;
-showSearchInterface();
-if(input.match(/^https?:\/\//i)||input.match(/^[^\s]+\.[^\s]+$/)){
-openProxy(input.startsWith('http')?input:'https://'+input);
-}else{
-document.getElementById('mainSearch').value=input;
-performSearch();
-}
-}
-
-function openProxy(url){
-if(url.toLowerCase().includes('chatgpt.com')||url.toLowerCase().includes('chat.openai.com')){
-const view=document.getElementById('view-home');
-view.innerHTML=`<div style="padding:40px 20px;text-align:center;overflow-y:auto;height:100%;">
-<div style="font-size:82px;margin-bottom:20px;">🤖</div>
-<h1 style="font-size:32px;margin-bottom:20px;">ChatGPT Access</h1>
-<p style="font-size:18px;opacity:0.9;margin-bottom:30px;max-width:600px;margin-left:auto;margin-right:auto;">ChatGPT works best when accessed directly. Choose your preferred method:</p>
-<div style="display:flex;gap:15px;justify-content:center;flex-wrap:wrap;margin-bottom:30px;">
-<button onclick="window.open('https://chat.openai.com','_blank')" style="background:linear-gradient(135deg,#8a2be2,#9300ea);color:white;border:none;padding:18px 35px;border-radius:25px;font-weight:600;font-size:17px;cursor:pointer;box-shadow:0 5px 20px rgba(138,43,226,0.4);">🌐 Open ChatGPT</button>
-<button onclick="tryEmbedChatGPT()" style="background:rgba(255,255,255,0.2);color:white;border:none;padding:18px 35px;border-radius:25px;font-weight:600;font-size:17px;cursor:pointer;">📱 Try Embed</button>
-<button onclick="location.reload()" style="background:rgba(255,255,255,0.1);color:white;border:none;padding:18px 35px;border-radius:25px;font-weight:600;font-size:17px;cursor:pointer;">← Back</button>
-</div></div>`;
-return;
-}
-
-const complexSites=['perplexity.ai','poki.com','youtube.com','netflix.com','discord.com','spotify.com','twitch.tv','roblox.com'];
-const isComplex=complexSites.some(site=>url.toLowerCase().includes(site));
-if(isComplex){
-const view=document.getElementById('view-home');
-view.innerHTML=`<div style="padding:60px 20px;text-align:center;overflow-y:auto;height:100%;">
-<div style="font-size:92px;margin-bottom:20px;">⚠️</div>
-<h1 style="font-size:32px;margin-bottom:20px;">Complex Site Detected</h1>
-<p style="font-size:18px;opacity:0.9;margin-bottom:30px;max-width:600px;margin-left:auto;margin-right:auto;">This site uses advanced features that won't work properly in a proxy.</p>
-<div style="background:rgba(255,255,255,0.1);padding:20px;border-radius:20px;margin:30px auto;max-width:500px;">
-<p style="font-size:
+<script src="/app.js"></script>
+</body>
+</html>
