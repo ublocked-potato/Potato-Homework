@@ -1,0 +1,312 @@
+use actix_web::{web, App, HttpResponse, HttpServer, middleware};
+use serde::{Deserialize, Serialize};
+use reqwest::Client;
+use scraper::{Html, Selector};
+use std::collections::HashSet;
+use rayon::prelude::*;
+use tokio::time::Duration;
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SearchRequest {
+    q: String,
+    engine: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct SearchResult {
+    title: String,
+    url: String,
+    display_url: String,
+    snippet: String,
+    relevance_score: i32,
+    is_instant: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct SearchResponse {
+    success: bool,
+    query: String,
+    engine: String,
+    results: Vec<SearchResult>,
+    total_count: usize,
+    timestamp: String,
+}
+
+// Ultra-fast keyword relevance scoring
+fn calculate_relevance_score(result: &SearchResult, keywords: &[String]) -> i32 {
+    let mut score = 0;
+    let title_lower = result.title.to_lowercase();
+    let snippet_lower = result.snippet.to_lowercase();
+    let url_lower = result.url.to_lowercase();
+
+    for keyword in keywords {
+        let kw_lower = keyword.to_lowercase();
+        
+        // Title matches (most valuable)
+        if title_lower.contains(&kw_lower) {
+            score += 10;
+            // Exact match bonus
+            if title_lower == kw_lower {
+                score += 20;
+            }
+        }
+        
+        // Snippet matches
+        if snippet_lower.contains(&kw_lower) {
+            score += 5;
+        }
+        
+        // URL matches
+        if url_lower.contains(&kw_lower) {
+            score += 3;
+        }
+    }
+
+    // All keywords present bonus
+    if keywords.iter().all(|kw| {
+        let kw_lower = kw.to_lowercase();
+        title_lower.contains(&kw_lower) || snippet_lower.contains(&kw_lower)
+    }) {
+        score += 15;
+    }
+
+    score
+}
+
+// Parallel scraping with Rayon for maximum speed
+async fn scrape_duckduckgo(query: &str, client: &Client) -> Vec<SearchResult> {
+    let mut all_results = Vec::new();
+    let pages: Vec<usize> = (0..5).collect(); // 5 pages
+    
+    // Parallel requests
+    let results: Vec<Vec<SearchResult>> = pages.par_iter().filter_map(|&page| {
+        let url = if page == 0 {
+            format!("https://html.duckduckgo.com/html/?q={}", urlencoding::encode(query))
+        } else {
+            format!("https://html.duckduckgo.com/html/?q={}&s={}", 
+                urlencoding::encode(query), page * 30)
+        };
+        
+        // Blocking request in parallel thread
+        let rt = tokio::runtime::Runtime::new().ok()?;
+        let response = rt.block_on(async {
+            client.get(&url)
+                .timeout(Duration::from_secs(8))
+                .send()
+                .await
+                .ok()?
+                .text()
+                .await
+                .ok()
+        })?;
+        
+        let document = Html::parse_document(&response);
+        let result_selector = Selector::parse(".result__body").ok()?;
+        let link_selector = Selector::parse(".result__a").ok()?;
+        let snippet_selector = Selector::parse(".result__snippet").ok()?;
+        
+        let mut page_results = Vec::new();
+        
+        for result in document.select(&result_selector) {
+            if let Some(link) = result.select(&link_selector).next() {
+                let mut url = link.value().attr("href").unwrap_or("").to_string();
+                
+                // Extract real URL from DDG redirect
+                if url.contains("uddg=") {
+                    if let Some(start) = url.find("uddg=") {
+                        let encoded = &url[start + 5..];
+                        if let Some(end) = encoded.find('&') {
+                            url = urlencoding::decode(&encoded[..end]).ok()?.to_string();
+                        } else {
+                            url = urlencoding::decode(encoded).ok()?.to_string();
+                        }
+                    }
+                }
+                
+                let title = link.text().collect::<String>().trim().to_string();
+                let snippet = result.select(&snippet_selector)
+                    .next()
+                    .map(|s| s.text().collect::<String>().trim().to_string())
+                    .unwrap_or_default();
+                
+                let display_url = url::Url::parse(&url)
+                    .ok()
+                    .and_then(|u| u.host_str().map(|h| h.replace("www.", "")))
+                    .unwrap_or_default();
+                
+                page_results.push(SearchResult {
+                    title,
+                    url,
+                    display_url,
+                    snippet,
+                    relevance_score: 0,
+                    is_instant: false,
+                });
+            }
+        }
+        
+        Some(page_results)
+    }).collect();
+    
+    for page_results in results {
+        all_results.extend(page_results);
+    }
+    
+    all_results
+}
+
+async fn scrape_google(query: &str, client: &Client) -> Vec<SearchResult> {
+    let mut all_results = Vec::new();
+    let pages: Vec<usize> = (0..10).collect();
+    
+    let results: Vec<Vec<SearchResult>> = pages.par_iter().filter_map(|&page| {
+        let url = format!("https://www.google.com/search?q={}&num=10&start={}", 
+            urlencoding::encode(query), page * 10);
+        
+        let rt = tokio::runtime::Runtime::new().ok()?;
+        let response = rt.block_on(async {
+            client.get(&url)
+                .timeout(Duration::from_secs(8))
+                .send()
+                .await
+                .ok()?
+                .text()
+                .await
+                .ok()
+        })?;
+        
+        let document = Html::parse_document(&response);
+        let result_selector = Selector::parse("div.g").ok()?;
+        let title_selector = Selector::parse("h3").ok()?;
+        let link_selector = Selector::parse("a").ok()?;
+        let snippet_selector = Selector::parse(".VwiC3b, .s, .st, span.aCOpRe").ok()?;
+        
+        let mut page_results = Vec::new();
+        
+        for result in document.select(&result_selector) {
+            if let (Some(title_elem), Some(link_elem)) = (
+                result.select(&title_selector).next(),
+                result.select(&link_selector).next()
+            ) {
+                let mut url = link_elem.value().attr("href").unwrap_or("").to_string();
+                
+                // Clean Google redirect URLs
+                if url.starts_with("/url?q=") {
+                    if let Some(real_url) = url.strip_prefix("/url?q=") {
+                        if let Some(end) = real_url.find('&') {
+                            url = urlencoding::decode(&real_url[..end]).ok()?.to_string();
+                        }
+                    }
+                }
+                
+                if !url.starts_with("/search") && url.starts_with("http") {
+                    let title = title_elem.text().collect::<String>().trim().to_string();
+                    let snippet = result.select(&snippet_selector)
+                        .next()
+                        .map(|s| s.text().collect::<String>().trim().to_string())
+                        .unwrap_or_default();
+                    
+                    let display_url = url::Url::parse(&url)
+                        .ok()
+                        .and_then(|u| u.host_str().map(|h| h.replace("www.", "")))
+                        .unwrap_or_default();
+                    
+                    page_results.push(SearchResult {
+                        title,
+                        url,
+                        display_url,
+                        snippet,
+                        relevance_score: 0,
+                        is_instant: false,
+                    });
+                }
+            }
+        }
+        
+        Some(page_results)
+    }).collect();
+    
+    for page_results in results {
+        all_results.extend(page_results);
+    }
+    
+    all_results
+}
+
+#[actix_web::post("/api/search")]
+async fn search(req: web::Json<SearchRequest>) -> HttpResponse {
+    let client = Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        .build()
+        .unwrap();
+    
+    let mut results = match req.engine.as_str() {
+        "duckduckgo" => scrape_duckduckgo(&req.q, &client).await,
+        "google" => scrape_google(&req.q, &client).await,
+        _ => scrape_duckduckgo(&req.q, &client).await,
+    };
+    
+    // Remove duplicates (ultra-fast with HashSet)
+    let mut seen = HashSet::new();
+    results.retain(|r| seen.insert(r.url.clone()));
+    
+    // Calculate relevance scores
+    let keywords: Vec<String> = req.q
+        .split_whitespace()
+        .filter(|w| w.len() > 2)
+        .map(|s| s.to_string())
+        .collect();
+    
+    for result in &mut results {
+        result.relevance_score = calculate_relevance_score(result, &keywords);
+    }
+    
+    // Sort by relevance (parallel sort for speed)
+    results.par_sort_by(|a, b| b.relevance_score.cmp(&a.relevance_score));
+    
+    // Limit to top 100
+    results.truncate(100);
+    
+    let response = SearchResponse {
+        success: true,
+        query: req.q.clone(),
+        engine: req.engine.clone(),
+        total_count: results.len(),
+        results,
+        timestamp: chrono::Utc::now().to_rfc3339(),
+    };
+    
+    HttpResponse::Ok().json(response)
+}
+
+#[actix_web::get("/api/health")]
+async fn health() -> HttpResponse {
+    HttpResponse::Ok().json(serde_json::json!({
+        "status": "healthy",
+        "service": "rust-search-engine",
+        "version": "1.0.0"
+    }))
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    println!("🦀 Rust Search Engine starting on port 8080...");
+    
+    HttpServer::new(|| {
+        App::new()
+            .wrap(middleware::Compress::default())
+            .wrap(middleware::Logger::default())
+            .wrap(
+                actix_cors::Cors::default()
+                    .allow_any_origin()
+                    .allow_any_method()
+                    .allow_any_header()
+            )
+            .service(search)
+            .service(health)
+    })
+    .workers(4)
+    .bind(("0.0.0.0", 8080))?
+    .run()
+    .await
+}
