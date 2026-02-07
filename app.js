@@ -1,7 +1,6 @@
 /**
- * OmniSearch - Production Frontend Application
- * Hybrid architecture with Rust/Python/Node.js backends
- * Features: Stealth mode, auto-mirrors, domain detection
+ * OmniSearch - Frontend Application (CORS-only mode for Vercel)
+ * Uses client-side CORS proxies instead of backend APIs.
  */
 
 // ============================================================================
@@ -13,7 +12,7 @@ const state = {
   proxyHomepage: localStorage.getItem('proxyHomepage') || 'classroom',
   stealthMode: localStorage.getItem('stealthMode') === 'true',
   autoMirror: localStorage.getItem('autoMirror') !== 'false', // default true
-  backend: null, // 'rust' | 'python' | 'evasion' | 'cors'
+  backend: 'cors', // force CORS mode
   searchCount: parseInt(localStorage.getItem('searchCount')) || 0,
   burnedCount: 0,
   history: [],
@@ -33,7 +32,7 @@ let currentProxyIndex = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
   initializeUI();
-  detectBackend();
+  detectBackend();       // now just sets CORS mode text/UI
   setupEventListeners();
   applyDisguise(state.proxyHomepage);
   updateStatistics();
@@ -56,7 +55,7 @@ function initializeUI() {
 }
 
 // ============================================================================
-// BACKEND DETECTION
+// BACKEND DETECTION (CORS-ONLY DISPLAY)
 // ============================================================================
 
 async function detectBackend() {
@@ -64,59 +63,18 @@ async function detectBackend() {
   const modeBadge = document.getElementById('modeBadge');
   const activeBackendSpan = document.getElementById('activeBackend');
 
-  try {
-    // Check if Node.js orchestrator is available
-    const healthResponse = await fetch('/api/health', { timeout: 3000 });
-    
-    if (healthResponse.ok) {
-      const health = await healthResponse.json();
-      
-      if (health.backends?.rust) {
-        state.backend = 'rust';
-        updateModeDisplay('Rust Hot Path • Ultra-Fast 🦀', '🦀 Rust');
-        console.log('✅ Rust backend active');
-      } else if (health.backends?.python) {
-        state.backend = 'python';
-        updateModeDisplay('Python Backend • Advanced Parsing 🐍', '🐍 Python');
-        console.log('✅ Python backend active');
-      } else if (health.backends?.evasion) {
-        state.backend = 'evasion';
-        updateModeDisplay('Evasion Layer • Maximum Stealth 🥷', '🥷 Evasion');
-        console.log('✅ Evasion backend active');
-      } else {
-        state.backend = 'cors';
-        updateModeDisplay('CORS Proxy Mode • Client-Side 🌐', '🌐 CORS');
-        console.log('⚠️ Using CORS fallback');
-      }
-      
-      // Update burned domains count
-      if (health.backends?.evasion) {
-        try {
-          const burnedResponse = await fetch('/api/burned-domains');
-          const burnedData = await burnedResponse.json();
-          state.burnedCount = burnedData.total_burned || 0;
-          updateStatistics();
-        } catch (e) {
-          console.warn('Could not fetch burned domains:', e);
-        }
-      }
-    } else {
-      throw new Error('Backend unavailable');
-    }
-  } catch (error) {
-    console.warn('Backend detection failed, using CORS:', error);
-    state.backend = 'cors';
-    updateModeDisplay('CORS Proxy Mode • Client-Side 🌐', '🌐 CORS');
-  }
+  // Force CORS mode – no server backend on Vercel
+  state.backend = 'cors';
 
-  function updateModeDisplay(text, badge) {
-    if (modeText) modeText.textContent = text;
-    if (modeBadge) {
-      modeBadge.textContent = badge;
-      modeBadge.style.display = 'block';
-    }
-    if (activeBackendSpan) activeBackendSpan.textContent = badge;
+  const text = 'CORS Proxy Mode • Client-Side 🌐';
+  const badge = '🌐 CORS';
+
+  if (modeText) modeText.textContent = text;
+  if (modeBadge) {
+    modeBadge.textContent = badge;
+    modeBadge.style.display = 'block';
   }
+  if (activeBackendSpan) activeBackendSpan.textContent = badge;
 }
 
 // ============================================================================
@@ -195,7 +153,7 @@ function setupKeyboardShortcuts() {
       }
     }
 
-    // ESC: Close settings/go back
+    // ESC: Close settings
     if (e.key === 'Escape') {
       const modal = document.getElementById('settingsModal');
       if (modal?.classList.contains('active')) {
@@ -227,7 +185,10 @@ function setHomepage(homepage) {
   });
   
   applyDisguise(homepage);
-  showNotification(`✓ Homepage changed to: ${homepage === 'blank' ? 'Blank Page' : homepage === 'google' ? 'Google' : 'Google Classroom'}`);
+  showNotification(`✓ Homepage changed to: ${
+    homepage === 'blank' ? 'Blank Page' :
+    homepage === 'google' ? 'Google' : 'Google Classroom'
+  }`);
 }
 
 function toggleSetting(setting) {
@@ -281,7 +242,8 @@ function applyDisguise(type) {
   switch (type) {
     case 'blank':
       if (pageTitle) pageTitle.textContent = '';
-      if (favicon) favicon.href = 'data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      if (favicon) favicon.href =
+        'data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
       if (addressBar) addressBar.value = 'about:blank';
       if (newTabPage) newTabPage.style.display = 'flex';
       if (window.history?.pushState) {
@@ -321,7 +283,7 @@ function showSearchInterface() {
 }
 
 // ============================================================================
-// SEARCH FUNCTIONALITY
+// SEARCH FUNCTIONALITY (CORS ONLY)
 // ============================================================================
 
 async function performSearch() {
@@ -341,43 +303,16 @@ async function performSearch() {
     <div class="loading-overlay">
       <div class="loading-spinner"></div>
       <div style="margin-top:20px;">
-        ${state.backend === 'rust' ? '🦀 Rust' : state.backend === 'python' ? '🐍 Python' : '🌐 CORS'} 
-        searching for 100 results...
+        🌐 CORS searching for 100 results...
       </div>
     </div>
   `;
 
   try {
-    let results;
-
-    if (state.backend === 'rust' || state.backend === 'python' || state.backend === 'evasion') {
-      // Use backend API
-      const response = await fetch('/api/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          q: query,
-          engine: state.currentEngine
-        })
-      });
-
-      if (!response.ok) throw new Error('Search failed');
-
-      const data = await response.json();
-      
-      if (!data.success || !data.results || data.results.length === 0) {
-        showNoResults(view);
-        return;
-      }
-
-      results = data.results;
-    } else {
-      // CORS fallback
-      results = await corsSearch(query);
-      if (results.length === 0) {
-        showNoResults(view);
-        return;
-      }
+    const results = await corsSearch(query);
+    if (!results || results.length === 0) {
+      showNoResults(view);
+      return;
     }
 
     displayResults(results, query);
@@ -576,26 +511,7 @@ function handleResultClick(url) {
 }
 
 async function openProxy(url) {
-  // Check if stealth mode is enabled
-  if (state.stealthMode && state.backend === 'evasion') {
-    return await openWithStealth(url);
-  }
-
-  // Check for special cases
-  if (url.toLowerCase().includes('chatgpt.com') || url.toLowerCase().includes('chat.openai.com')) {
-    showChatGPTWarning(url);
-    return;
-  }
-
-  const complexSites = ['perplexity.ai', 'poki.com', 'youtube.com', 'netflix.com', 'discord.com', 'spotify.com', 'twitch.tv', 'roblox.com'];
-  const isComplex = complexSites.some(site => url.toLowerCase().includes(site));
-  
-  if (isComplex) {
-    showComplexSiteWarning(url);
-    return;
-  }
-
-  // Regular proxy loading
+  // Stealth backend is not available in CORS-only mode; just use normal proxy
   const view = document.getElementById('view-home');
   if (!view) return;
 
@@ -611,128 +527,17 @@ async function openProxy(url) {
 }
 
 function getProxyUrl(url) {
-  if (state.backend === 'rust' || state.backend === 'python' || state.backend === 'evasion') {
-    const encoded = btoa(url);
-    return `/api/proxy?url=${encoded}`;
-  } else {
-    return CORS_PROXIES[currentProxyIndex] + encodeURIComponent(url);
-  }
+  // Pure CORS mode
+  return CORS_PROXIES[currentProxyIndex] + encodeURIComponent(url);
 }
 
-async function openWithStealth(url) {
-  console.log('🥷 Loading with stealth mode...');
-  const view = document.getElementById('view-home');
-  if (!view) return;
-
-  view.innerHTML = `
-    <div class="loading-overlay">
-      <div class="loading-spinner"></div>
-      <div style="margin-top:20px;">🥷 Scrambling content...</div>
-    </div>
-  `;
-
-  try {
-    const response = await fetch('/api/scramble', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, mode: 'both' })
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-      if (data.domain_redirected) {
-        console.log(`🔄 Domain burned, redirected to: ${data.working_domain}`);
-        showNotification(`Domain redirected to mirror: ${data.working_domain}`);
-      }
-
-      view.innerHTML = `<iframe class="proxy-frame" srcdoc="${escapeAttr(data.scrambled_html)}" sandbox="allow-scripts allow-same-origin"></iframe>`;
-
-      // Notify service worker
-      if (navigator.serviceWorker?.controller) {
-        navigator.serviceWorker.controller.postMessage({ type: 'ACTIVATE_STEALTH' });
-      }
-
-      console.log('✅ Content loaded in stealth mode');
-    } else {
-      throw new Error(data.error);
-    }
-  } catch (error) {
-    console.error('Stealth mode failed:', error);
-    showNotification('⚠️ Stealth failed, using normal mode');
-    setTimeout(() => openProxy(url), 1000);
-  }
-}
-
-function showChatGPTWarning(url) {
-  const view = document.getElementById('view-home');
-  if (!view) return;
-
-  view.innerHTML = `
-    <div style="padding:60px 20px;text-align:center;overflow-y:auto;height:100%;">
-      <div style="font-size:82px;margin-bottom:20px;">🤖</div>
-      <h1 style="font-size:32px;margin-bottom:20px;">ChatGPT Access</h1>
-      <p style="font-size:18px;opacity:0.9;margin-bottom:30px;max-width:600px;margin-left:auto;margin-right:auto;">
-        ChatGPT works best when accessed directly. Choose your preferred method:
-      </p>
-      <div style="display:flex;gap:15px;justify-content:center;flex-wrap:wrap;">
-        <button onclick="window.open('${url}','_blank')" class="back-btn">
-          🌐 Open ChatGPT
-        </button>
-        <button onclick="tryProxyAnyway('${escapeAttr(url)}')" class="back-btn" style="background:rgba(255,255,255,0.2);">
-          📱 Try Proxy
-        </button>
-        <button onclick="location.reload()" class="back-btn" style="background:rgba(255,255,255,0.1);">
-          ← Back
-        </button>
-      </div>
-    </div>
-  `;
-}
-
-function showComplexSiteWarning(url) {
-  const view = document.getElementById('view-home');
-  if (!view) return;
-
-  view.innerHTML = `
-    <div style="padding:60px 20px;text-align:center;overflow-y:auto;height:100%;">
-      <div style="font-size:92px;margin-bottom:20px;">⚠️</div>
-      <h1 style="font-size:32px;margin-bottom:20px;">Complex Site Detected</h1>
-      <p style="font-size:18px;opacity:0.9;margin-bottom:30px;max-width:600px;margin-left:auto;margin-right:auto;">
-        This site uses advanced features that may not work properly in a proxy.
-      </p>
-      <div style="background:rgba(255,255,255,0.1);padding:20px;border-radius:20px;margin:30px auto;max-width:500px;">
-        <p style="font-size:14px;opacity:0.8;margin-bottom:10px;">Site:</p>
-        <p style="font-family:monospace;font-size:14px;color:#a78bfa;word-break:break-all;">${escapeHtml(url)}</p>
-      </div>
-      <div style="display:flex;gap:15px;justify-content:center;flex-wrap:wrap;">
-        <button onclick="window.open('${url}','_blank')" class="back-btn">
-          🌐 Visit Real Site
-        </button>
-        <button onclick="tryProxyAnyway('${escapeAttr(url)}')" class="back-btn" style="background:rgba(255,255,255,0.2);">
-          Try Proxy Anyway
-        </button>
-        <button onclick="location.reload()" class="back-btn" style="background:rgba(255,255,255,0.1);">
-          ← Back
-        </button>
-      </div>
-    </div>
-  `;
-}
-
-function tryProxyAnyway(url) {
-  const view = document.getElementById('view-home');
-  if (!view) return;
-
-  view.innerHTML = `<iframe class="proxy-frame" src="${getProxyUrl(url)}"></iframe>`;
-}
+// (If you want to keep the ChatGPT/complex-site warnings, you can reinsert those helpers here)
 
 // ============================================================================
 // HISTORY & NAVIGATION
 // ============================================================================
 
 function addToHistory(entry) {
-  // Remove forward history if we're not at the end
   if (state.historyIndex < state.history.length - 1) {
     state.history = state.history.slice(0, state.historyIndex + 1);
   }
@@ -768,4 +573,61 @@ function navigateForward() {
     const entry = state.history[state.historyIndex];
     
     if (entry.type === 'search') {
-      const mainSearch = document.
+      const mainSearch = document.getElementById('mainSearch');
+      if (mainSearch) {
+        mainSearch.value = entry.query;
+        performSearch();
+      }
+    } else if (entry.type === 'proxy') {
+      openProxy(entry.url);
+    }
+
+    updateNavigationButtons();
+  }
+}
+
+function refreshPage() {
+  location.reload();
+}
+
+function updateNavigationButtons() {
+  const backBtn = document.getElementById('backBtn');
+  const forwardBtn = document.getElementById('forwardBtn');
+
+  if (backBtn) backBtn.disabled = state.historyIndex <= 0;
+  if (forwardBtn) forwardBtn.disabled = state.historyIndex >= state.history.length - 1;
+}
+
+// ============================================================================
+// UTILITIES
+// ============================================================================
+
+function showNotification(message) {
+  const existing = document.querySelector('.notification');
+  if (existing) existing.remove();
+
+  const note = document.createElement('div');
+  note.className = 'notification';
+  note.textContent = message;
+  document.body.appendChild(note);
+
+  setTimeout(() => note.remove(), 3000);
+}
+
+function escapeHtml(str = '') {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function escapeAttr(str = '') {
+  return escapeHtml(str).replace(/"/g, '&quot;');
+}
+
+// Stub for reportCurrentDomain (kept so shortcut doesn’t break)
+function reportCurrentDomain() {
+  showNotification('Reported current domain as blocked (stub).');
+}
