@@ -482,4 +482,4 @@ def health():
     return jsonify({'status': 'healthy', 'version': '4.0-ultimate'})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=Fa
+    app.run(host='0.0.0.0', port=5000, debug=False)

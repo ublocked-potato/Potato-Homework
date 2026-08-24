@@ -1,6 +1,6 @@
 /**
- * OmniSearch - Frontend Application (CORS-only mode for Vercel)
- * Uses client-side CORS proxies instead of backend APIs.
+ * OmniSearch - Frontend Application
+ * Uses the app's same-origin Python API for production requests.
  */
 
 // ============================================================================
@@ -12,7 +12,7 @@ const state = {
   proxyHomepage: localStorage.getItem('proxyHomepage') || 'classroom',
   stealthMode: localStorage.getItem('stealthMode') === 'true',
   autoMirror: localStorage.getItem('autoMirror') !== 'false', // default true
-  backend: 'cors', // force CORS mode
+  backend: 'server',
   searchCount: parseInt(localStorage.getItem('searchCount')) || 0,
   burnedCount: 0,
   history: [],
@@ -20,8 +20,7 @@ const state = {
 };
 
 const CORS_PROXIES = [
-  'https://api.allorigins.win/raw?url=',
-  'https://corsproxy.io/?',
+  'https://corsproxy.io/?url=',
 ];
 
 let currentProxyIndex = 0;
@@ -32,7 +31,7 @@ let currentProxyIndex = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
   initializeUI();
-  detectBackend();       // now just sets CORS mode text/UI
+  detectBackend();
   setupEventListeners();
   applyDisguise(state.proxyHomepage);
   updateStatistics();
@@ -55,7 +54,7 @@ function initializeUI() {
 }
 
 // ============================================================================
-// BACKEND DETECTION (CORS-ONLY DISPLAY)
+// BACKEND DISPLAY
 // ============================================================================
 
 async function detectBackend() {
@@ -63,11 +62,10 @@ async function detectBackend() {
   const modeBadge = document.getElementById('modeBadge');
   const activeBackendSpan = document.getElementById('activeBackend');
 
-  // Force CORS mode – no server backend on Vercel
-  state.backend = 'cors';
+  state.backend = 'server';
 
-  const text = 'CORS Proxy Mode • Client-Side 🌐';
-  const badge = '🌐 CORS';
+  const text = 'Server Search Mode • Same-Origin 🔒';
+  const badge = '🔒 Server';
 
   if (modeText) modeText.textContent = text;
   if (modeBadge) {
@@ -117,6 +115,10 @@ function setupEventListeners() {
   document.getElementById('backBtn')?.addEventListener('click', navigateBack);
   document.getElementById('forwardBtn')?.addEventListener('click', navigateForward);
   document.getElementById('refreshBtn')?.addEventListener('click', refreshPage);
+  document.querySelector('.add-tab-btn')?.addEventListener('click', addNewTab);
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => activateTab(tab.dataset.tabId));
+  });
 
   // Keyboard shortcuts
   setupKeyboardShortcuts();
@@ -247,7 +249,7 @@ function applyDisguise(type) {
       if (addressBar) addressBar.value = 'about:blank';
       if (newTabPage) newTabPage.style.display = 'flex';
       if (window.history?.pushState) {
-        window.history.pushState(null, '', 'about:blank');
+        window.history.pushState(null, '', '/about:blank');
       }
       break;
 
@@ -258,7 +260,7 @@ function applyDisguise(type) {
       if (newTabPage) newTabPage.style.display = 'none';
       googleFrame?.classList.add('active');
       if (window.history?.pushState) {
-        window.history.pushState(null, 'Google', 'https://www.google.com');
+        window.history.pushState(null, 'Google', '/google');
       }
       break;
 
@@ -270,20 +272,50 @@ function applyDisguise(type) {
       if (newTabPage) newTabPage.style.display = 'none';
       classroomFrame?.classList.add('active');
       if (window.history?.pushState) {
-        window.history.pushState(null, 'Google Classroom', 'https://classroom.google.com');
+        window.history.pushState(null, 'Google Classroom', '/classroom');
       }
       break;
   }
 }
 
 function showSearchInterface() {
-  document.querySelector('.new-tab-page').style.display = 'flex';
+  const newTabPage = document.querySelector('.new-tab-page');
+  if (newTabPage) newTabPage.style.display = 'flex';
   document.getElementById('googleFrame')?.classList.remove('active');
   document.getElementById('classroomFrame')?.classList.remove('active');
 }
 
+function addNewTab() {
+  const tabsContainer = document.getElementById('tabsContainer');
+  if (!tabsContainer) return;
+
+  const tabId = `tab-${Date.now()}`;
+  const tab = document.createElement('div');
+  tab.className = 'tab';
+  tab.dataset.tabId = tabId;
+  tab.innerHTML = '<span style="font-size:20px;">🥔</span><span class="tab-title">New Tab</span>';
+  tab.addEventListener('click', () => activateTab(tabId));
+  tabsContainer.querySelectorAll('.tab').forEach(item => item.classList.remove('active'));
+  tab.classList.add('active');
+  tabsContainer.appendChild(tab);
+
+  const addressBar = document.getElementById('addressBar');
+  if (addressBar) addressBar.value = '';
+  const mainSearch = document.getElementById('mainSearch');
+  if (mainSearch) mainSearch.value = '';
+  showSearchInterface();
+  applyDisguise('blank');
+}
+
+function activateTab(tabId) {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.tabId === tabId);
+  });
+  showSearchInterface();
+}
+
 // ============================================================================
-// SEARCH FUNCTIONALITY (CORS ONLY)
+// SEARCH FUNCTIONALITY
 // ============================================================================
 
 async function performSearch() {
@@ -303,13 +335,13 @@ async function performSearch() {
     <div class="loading-overlay">
       <div class="loading-spinner"></div>
       <div style="margin-top:20px;">
-        🌐 CORS searching for 100 results...
+        🔒 Searching securely...
       </div>
     </div>
   `;
 
   try {
-    const results = await corsSearch(query);
+    const results = await serverSearch(query);
     if (!results || results.length === 0) {
       showNoResults(view);
       return;
@@ -324,39 +356,15 @@ async function performSearch() {
   }
 }
 
-async function corsSearch(query) {
-  let searchUrl = '';
-  
-  switch (state.currentEngine) {
-    case 'duckduckgo':
-      searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-      break;
-    case 'google':
-      searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=20`;
-      break;
-    case 'brave':
-      searchUrl = `https://search.brave.com/search?q=${encodeURIComponent(query)}`;
-      break;
-    case 'startpage':
-      searchUrl = `https://www.startpage.com/sp/search?query=${encodeURIComponent(query)}`;
-      break;
-    default:
-      searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-  }
+async function serverSearch(query) {
+  const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&engine=${encodeURIComponent(state.currentEngine)}`);
+  if (!response.ok) throw new Error(`Search service returned ${response.status}`);
 
-  const proxyUrl = CORS_PROXIES[currentProxyIndex] + encodeURIComponent(searchUrl);
-  
-  try {
-    const response = await fetch(proxyUrl);
-    if (!response.ok) throw new Error('CORS proxy failed');
-    
-    const html = await response.text();
-    return parseSearchResults(html, state.currentEngine);
-  } catch (error) {
-    // Try next CORS proxy
-    currentProxyIndex = (currentProxyIndex + 1) % CORS_PROXIES.length;
-    throw error;
+  const payload = await response.json();
+  if (!payload.success && (!payload.results || payload.results.length === 0)) {
+    throw new Error(payload.error || 'Search service returned no results');
   }
+  return payload.results || [];
 }
 
 function parseSearchResults(html, engine) {
@@ -511,7 +519,6 @@ function handleResultClick(url) {
 }
 
 async function openProxy(url) {
-  // Stealth backend is not available in CORS-only mode; just use normal proxy
   const view = document.getElementById('view-home');
   if (!view) return;
 
@@ -520,15 +527,30 @@ async function openProxy(url) {
       <div class="loading-spinner"></div>
       <div style="margin-top:20px;">Loading site...</div>
     </div>
-    <iframe class="proxy-frame" src="${getProxyUrl(url)}" onload="this.previousElementSibling.remove()"></iframe>
+    <iframe class="proxy-frame" data-url="${escapeAttr(url)}" src="${getProxyUrl(url)}"
+      onload="removeProxyLoader(this)"
+      onerror="retryProxyFrame(this)"></iframe>
   `;
 
   addToHistory({ type: 'proxy', url });
 }
 
 function getProxyUrl(url) {
-  // Pure CORS mode
-  return CORS_PROXIES[currentProxyIndex] + encodeURIComponent(url);
+  const encodedUrl = btoa(unescape(encodeURIComponent(url)));
+  return `/api/proxy?url=${encodeURIComponent(encodedUrl)}`;
+}
+
+function removeProxyLoader(frame) {
+  frame?.previousElementSibling?.remove();
+}
+
+function retryProxyFrame(frame) {
+  if (!frame || frame.dataset.retried === 'true') {
+    removeProxyLoader(frame);
+    return;
+  }
+  frame.dataset.retried = 'true';
+  frame.src = getProxyUrl(frame.dataset.url || frame.src);
 }
 
 // (If you want to keep the ChatGPT/complex-site warnings, you can reinsert those helpers here)
